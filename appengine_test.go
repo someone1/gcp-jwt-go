@@ -6,9 +6,9 @@ import (
 	"strings"
 	"testing"
 
-	"appengine/aetest"
+	"google.golang.org/appengine/aetest"
 
-	"github.com/dgrijalva/jwt-go"
+	jwt "github.com/dgrijalva/jwt-go"
 	_ "github.com/someone1/gcp-jwt-go"
 )
 
@@ -39,11 +39,11 @@ var appEngineTestData = []struct {
 }
 
 func TestAppEngineVerify(t *testing.T) {
-	c, err := aetest.NewContext(nil)
+	c, close, err := aetest.NewContext()
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer c.Close()
+	defer close()
 
 	for _, data := range appEngineTestData {
 		parts := strings.Split(data.tokenString, ".")
@@ -60,11 +60,11 @@ func TestAppEngineVerify(t *testing.T) {
 }
 
 func TestAppEngineSign(t *testing.T) {
-	c, err := aetest.NewContext(nil)
+	c, close, err := aetest.NewContext()
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer c.Close()
+	defer close()
 
 	for _, data := range appEngineTestData {
 		if data.valid {
