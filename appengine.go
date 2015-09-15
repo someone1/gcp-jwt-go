@@ -7,7 +7,8 @@ import (
 	"crypto/rsa"
 	"crypto/sha256"
 
-	"appengine"
+	"golang.org/x/net/context"
+	"google.golang.org/appengine"
 
 	"github.com/dgrijalva/jwt-go"
 )
@@ -35,10 +36,10 @@ func (s *SigningMethodAppEngine) Alg() string {
 // For this signing method, a valid appengine.Context must be
 // passed as the key.
 func (s *SigningMethodAppEngine) Sign(signingString string, key interface{}) (string, error) {
-	var ctx appengine.Context
+	var ctx context.Context
 
 	switch k := key.(type) {
-	case appengine.Context:
+	case context.Context:
 		ctx = k
 	default:
 		return "", jwt.ErrInvalidKey
@@ -57,10 +58,10 @@ func (s *SigningMethodAppEngine) Sign(signingString string, key interface{}) (st
 // For this signing method, a valid appengine.Context must be
 // passed as the key.
 func (s *SigningMethodAppEngine) Verify(signingString, signature string, key interface{}) error {
-	var ctx appengine.Context
+	var ctx context.Context
 
 	switch k := key.(type) {
-	case appengine.Context:
+	case context.Context:
 		ctx = k
 	default:
 		return jwt.ErrInvalidKey
