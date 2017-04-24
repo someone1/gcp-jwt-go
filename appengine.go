@@ -1,3 +1,5 @@
+// +build appengine appenginevm
+
 package gcp_jwt
 
 import (
@@ -16,24 +18,29 @@ import (
 // application and the key may rotate from time to time.
 // https://cloud.google.com/appengine/docs/go/reference#SignBytes
 // https://cloud.google.com/appengine/docs/go/appidentity/#Go_Asserting_identity_to_other_systems
-type SigningMethodAppEngine struct{}
+type SigningMethodAppEngineImpl struct{}
 
-type certificates []appengine.Certificate
+type aecertificates []appengine.Certificate
+
+var (
+	SigningMethodAppEngine *SigningMethodAppEngineImpl
+)
 
 func init() {
-	jwt.RegisterSigningMethod("AppEngine", func() jwt.SigningMethod {
-		return &SigningMethodAppEngine{}
+	SigningMethodAppEngine = &SigningMethodAppEngineImpl{}
+	jwt.RegisterSigningMethod(SigningMethodAppEngine.Alg(), func() jwt.SigningMethod {
+		return SigningMethodAppEngine
 	})
 }
 
-func (s *SigningMethodAppEngine) Alg() string {
+func (s *SigningMethodAppEngineImpl) Alg() string {
 	return "AppEngine" // Non-standard!
 }
 
 // Implements the Sign method from SigningMethod
 // For this signing method, a valid appengine.Context must be
 // passed as the key.
-func (s *SigningMethodAppEngine) Sign(signingString string, key interface{}) (string, error) {
+func (s *SigningMethodAppEngineImpl) Sign(signingString string, key interface{}) (string, error) {
 	var ctx context.Context
 
 	switch k := key.(type) {
@@ -55,7 +62,7 @@ func (s *SigningMethodAppEngine) Sign(signingString string, key interface{}) (st
 // Implements the Verify method from SigningMethod
 // For this signing method, a valid appengine.Context must be
 // passed as the key.
-func (s *SigningMethodAppEngine) Verify(signingString, signature string, key interface{}) error {
+func (s *SigningMethodAppEngineImpl) Verify(signingString, signature string, key interface{}) error {
 	var ctx context.Context
 
 	switch k := key.(type) {
@@ -71,7 +78,7 @@ func (s *SigningMethodAppEngine) Verify(signingString, signature string, key int
 		return err
 	}
 
-	var certs certificates
+	var certs aecertificates
 	certs, err = appengine.PublicCertificates(ctx)
 	if err != nil {
 		return err
