@@ -96,7 +96,7 @@ func (s *SigningMethodGCPImpl) Sign(signingString string, key interface{}) (stri
 
 	// Default config.OAuth2HTTPClient is a google.DefaultClient
 	if config.OAuth2HTTPClient == nil {
-		c, err := getDefaultClient(ctx)
+		c, err := getDefaultOauthClient(ctx)
 		if err != nil {
 			return "", err
 		}
@@ -159,7 +159,7 @@ func (s *SigningMethodGCPImpl) Verify(signingString, signature string, key inter
 
 	// Default config.Client is a http.DefaultClient
 	if config.Client == nil {
-		config.Client = http.DefaultClient
+		config.Client = getDefaultClient(ctx)
 	}
 
 	var sig []byte
@@ -226,7 +226,7 @@ func FromContext(ctx context.Context) (*IAMSignBlobConfig, bool) {
 	return val, ok
 }
 
-func getDefaultClient(ctx context.Context) (*http.Client, error) {
+func getDefaultOauthClient(ctx context.Context) (*http.Client, error) {
 	return google.DefaultClient(ctx, iam.CloudPlatformScope)
 }
 
