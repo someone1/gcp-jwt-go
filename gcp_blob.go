@@ -1,15 +1,10 @@
 package gcp_jwt
 
 import (
-	"crypto"
-	"crypto/rsa"
 	"crypto/sha256"
 	"encoding/base64"
-	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"net/http"
-	"sync"
 
 	"github.com/dgrijalva/jwt-go"
 	"golang.org/x/net/context"
@@ -17,19 +12,16 @@ import (
 	"google.golang.org/api/iam/v1"
 )
 
-const (
-	certificateURL = "https://www.googleapis.com/robot/v1/metadata/x509/"
-)
-
 var (
-	certsCache map[string]certificates
-	certMutex  sync.RWMutex
-
+	// SigningMethodGCP implements signing JWTs with
+	// the IAM signBlob API
 	SigningMethodGCP *SigningMethodGCPImpl
 )
 
 type gcpConfigKey struct{}
 
+// IAMSignBlobConfig holds config relevant to
+// interfacing with the API
 type IAMSignBlobConfig struct {
 	// Service account can be the email address or the uniqueId of the service account used to sign the JWT with
 	ServiceAccount string
@@ -52,22 +44,18 @@ type IAMSignBlobConfig struct {
 	DisableCache bool
 }
 
-// Implements the GCP IAM signing method
+// SigningMethodGCPImpl implements the GCP IAM sign blob method
 // This method uses a private key unique to your IAM account
 // and the key may rotate from time to time.
 // https://cloud.google.com/iam/reference/rest/v1/projects.serviceAccounts/signBlob
 // https://firebase.google.com/docs/auth/admin/verify-id-tokens
 type SigningMethodGCPImpl struct{}
 
-type certificates map[string]string
-
 func init() {
 	SigningMethodGCP = &SigningMethodGCPImpl{}
 	jwt.RegisterSigningMethod(SigningMethodGCP.Alg(), func() jwt.SigningMethod {
 		return SigningMethodGCP
 	})
-
-	certsCache = make(map[string]certificates)
 }
 
 func (s *SigningMethodGCPImpl) Alg() string {
@@ -172,47 +160,39 @@ func (s *SigningMethodGCPImpl) Verify(signingString, signature string, key inter
 
 	if config.DisableCache {
 		// Not leveraging the cache, do a HTTP request for the certificates and carry on
-		certs, err = getCertificatesForAccount(config.Client, config.ServiceAccount)
+		certResp, err := getCertificatesForAccount(config.Client, config.ServiceAccount)
 		if err != nil {
 			return err
 		}
+		certs = certResp.certs
 	} else {
 		// Check the cache for the certs and use those, otherwise grab 'em
-		certMutex.RLock()
-		if c, ok := certsCache[config.ServiceAccount]; ok {
+		if c, ok := getCertsFromCache(config.ServiceAccount); ok {
 			certs = c
-			certMutex.RUnlock()
 		} else {
-			certMutex.RUnlock()
-			certs, err = getCertificatesForAccount(config.Client, config.ServiceAccount)
+			certResponse, err := getCertificatesForAccount(config.Client, config.ServiceAccount)
 			if err != nil {
 				return err
 			}
-			certMutex.Lock()
-			certsCache[config.ServiceAccount] = certs
-			certMutex.Unlock()
+			certs = certResponse.certs
+			updateCache(config.ServiceAccount, certs, certResponse.expires)
 		}
 	}
 
 	hasher := sha256.New()
-	hasher.Write([]byte(signingString))
-	hash := hasher.Sum(nil)
-	err = verifyWithCerts(sig, hash, certs)
-
-	// If we were using a cached version, grab the new certs and try again
-	if err != nil && !config.DisableCache {
-		certs, err = getCertificatesForAccount(config.Client, config.ServiceAccount)
-		if err != nil {
-			return err
-		}
-		certMutex.Lock()
-		certsCache[config.ServiceAccount] = certs
-		certMutex.Unlock()
-
-		err = verifyWithCerts(sig, hash, certs)
+	_, err = hasher.Write([]byte(signingString))
+	if err != nil {
+		return err
 	}
+	hash := hasher.Sum(nil)
 
-	return err
+	// TODO:
+	// If the certs can rotate before the cache expires, what should we do?
+	// Do we invalidate the cache if we cannot authenticate or would that
+	// enable a DDoS-like attack where every request fails the cache and
+	// the program keeps trying to fetch replacements. For now, do nothing.
+
+	return verifyWithCerts(sig, hash, certs)
 }
 
 // NewContext returns a new context.Context that carries a provided IAMSignBlobConfig value
@@ -228,38 +208,4 @@ func FromContext(ctx context.Context) (*IAMSignBlobConfig, bool) {
 
 func getDefaultOauthClient(ctx context.Context) (*http.Client, error) {
 	return google.DefaultClient(ctx, iam.CloudPlatformScope)
-}
-
-func getCertificatesForAccount(hc *http.Client, account string) (certificates, error) {
-	resp, err := hc.Get(certificateURL + account)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-
-	b, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return nil, err
-	}
-
-	certs := make(certificates)
-
-	err = json.Unmarshal(b, &certs)
-	return certs, err
-}
-
-func verifyWithCerts(sig, hash []byte, certs certificates) error {
-	var certErr error
-	for _, cert := range certs {
-		rsaKey, err := jwt.ParseRSAPublicKeyFromPEM([]byte(cert))
-		if err != nil {
-			return err
-		}
-
-		if certErr = rsa.VerifyPKCS1v15(rsaKey, crypto.SHA256, hash, sig); certErr == nil {
-			return nil
-		}
-	}
-
-	return certErr
 }
