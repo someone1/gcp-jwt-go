@@ -16,11 +16,11 @@ Basic implementation of using the built-in [App Identity API](https://cloud.goog
 
 ```go
 import (
-	"github.com/someone1/gcp-jwt-go"
+    "github.com/someone1/gcp-jwt-go"
 )
 
 func init() {
-	// Unless we want to keep the original RS256 implementation alive, override it (recommended)
+    // Unless we want to keep the original RS256 implementation alive, override it (recommended)
     gcp_jwt.OverrideRS256()
 }
 ```
@@ -31,25 +31,25 @@ func init() {
 import (
     "context"
 
-	"github.com/dgrijalva/jwt-go"
-	"github.com/someone1/gcp-jwt-go"
+    "github.com/dgrijalva/jwt-go"
+    "github.com/someone1/gcp-jwt-go"
 )
 
 func makeToken() string {
     method := gcp_jwt.SigningMethodGCPJWT
-	token := jwt.New(method)
-	config := &gcp_jwt.IAMSignJWTConfig{
-		ServiceAccount: "app-id@appspot.gserviceaccount.com",
-	}
+    token := jwt.New(method)
+    config := &gcp_jwt.IAMSignJWTConfig{
+        ServiceAccount: "app-id@appspot.gserviceaccount.com",
+    }
     ctx := gcp_jwt.NewContextJWT(context.Background(), config)
 
     // Fill in Token claims
 
-	// !!IMPORTANT!! Due to the way the signJwt API returns tokens, we can't use the standard signing process
+    // !!IMPORTANT!! Due to the way the signJwt API returns tokens, we can't use the standard signing process
 
-	// To Sign
-	signingString, err := token.SigningString()
-	// handle err
+    // To Sign
+    signingString, err := token.SigningString()
+    // handle err
     tokenString, terr := method.Sign(signingString, ctx)
     // handle terr
 
@@ -64,33 +64,33 @@ import (
     "context"
     "strings"
 
-	"github.com/dgrijalva/jwt-go"
-	"github.com/someone1/gcp-jwt-go"
+    "github.com/dgrijalva/jwt-go"
+    "github.com/someone1/gcp-jwt-go"
 )
 
 func validateToken(tokenString string) {
-	config := &gcp_jwt.IAMSignJWTConfig{
-		ServiceAccount: "app-id@appspot.gserviceaccount.com",
-	}
-	ctx := gcp_jwt.NewContextJWT(context.Background(), config)
+    config := &gcp_jwt.IAMSignJWTConfig{
+        ServiceAccount: "app-id@appspot.gserviceaccount.com",
+    }
+    ctx := gcp_jwt.NewContextJWT(context.Background(), config)
 
-	// To Verify (if we called OverrideRS256)
-	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
-		// We do NOT have to check the Alg() here as that's done for us in the verification call, only RS256 is used
-		return ctx, nil
-	})
+    // To Verify (if we called OverrideRS256)
+    token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
+        // We do NOT have to check the Alg() here as that's done for us in the verification call, only RS256 is used
+        return ctx, nil
+    })
 
-	// If we DID NOT call OverrideRS256
-	// This is basically copying the https://github.com/dgrijalva/jwt-go/blob/master/parser.go#L23 ParseWithClaims function here but forcing our own method vs getting one based on the Alg field
-	// Or Try and parse, Ignore the result and try with the proper method:
-	token, _ := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
-		return nil, nil
-	})
-	parts := strings.Split(token.Raw, ".")
-	token.Method = gcp_jwt.SigningMethodGCPJWT
-	if err := token.Method.Verify(strings.Join(parts[0:2], "."), token.Signature, ctx); err != nil {
-		// handle error
-	} else {
+    // If we DID NOT call OverrideRS256
+    // This is basically copying the https://github.com/dgrijalva/jwt-go/blob/master/parser.go#L23 ParseWithClaims function here but forcing our own method vs getting one based on the Alg field
+    // Or Try and parse, Ignore the result and try with the proper method:
+    token, _ := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
+        return nil, nil
+    })
+    parts := strings.Split(token.Raw, ".")
+    token.Method = gcp_jwt.SigningMethodGCPJWT
+    if err := token.Method.Verify(strings.Join(parts[0:2], "."), token.Signature, ctx); err != nil {
+        // handle error
+    } else {
         token.Valid = true
     }
 }
