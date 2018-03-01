@@ -36,8 +36,7 @@ import (
 )
 
 func makeToken() string {
-    method := gcp_jwt.SigningMethodGCPJWT
-    token := jwt.New(method)
+    token := jwt.New(gcp_jwt.SigningMethodGCPJWT)
     config := &gcp_jwt.IAMSignJWTConfig{
         ServiceAccount: "app-id@appspot.gserviceaccount.com",
     }
@@ -50,7 +49,7 @@ func makeToken() string {
     // To Sign
     signingString, err := token.SigningString()
     // handle err
-    tokenString, terr := method.Sign(signingString, ctx)
+    tokenString, terr := token.Method.Sign(signingString, ctx)
     // handle terr
 
     return tokenString
