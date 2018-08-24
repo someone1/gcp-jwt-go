@@ -163,8 +163,9 @@ func (s *SigningMethodGCPJWTImpl) Verify(signingString, signature string, key in
 	}
 
 	// Default config.Client is a http.DefaultClient
-	if config.Client == nil {
-		config.Client = getDefaultClient(ctx)
+	client := config.Client
+	if client == nil {
+		client = getDefaultClient(ctx)
 	}
 
 	// Let's get the header
@@ -196,7 +197,7 @@ func (s *SigningMethodGCPJWTImpl) Verify(signingString, signature string, key in
 
 	if config.DisableCache {
 		// Not leveraging the cache, do a HTTP request for the certificates and carry on
-		certResp, cerr := getCertificatesForAccount(config.Client, config.ServiceAccount)
+		certResp, cerr := getCertificatesForAccount(client, config.ServiceAccount)
 		if cerr != nil {
 			return cerr
 		}
@@ -210,7 +211,7 @@ func (s *SigningMethodGCPJWTImpl) Verify(signingString, signature string, key in
 		if c, ok := getCertFromCache(config.ServiceAccount, header.KeyID); ok {
 			cert = c
 		} else {
-			certResp, cerr := getCertificatesForAccount(config.Client, config.ServiceAccount)
+			certResp, cerr := getCertificatesForAccount(client, config.ServiceAccount)
 			if cerr != nil {
 				return cerr
 			}

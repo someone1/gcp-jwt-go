@@ -146,8 +146,9 @@ func (s *SigningMethodGCPImpl) Verify(signingString, signature string, key inter
 	}
 
 	// Default config.Client is a http.DefaultClient
-	if config.Client == nil {
-		config.Client = getDefaultClient(ctx)
+	client := config.Client
+	if client == nil {
+		client = getDefaultClient(ctx)
 	}
 
 	var sig []byte
@@ -160,7 +161,7 @@ func (s *SigningMethodGCPImpl) Verify(signingString, signature string, key inter
 
 	if config.DisableCache {
 		// Not leveraging the cache, do a HTTP request for the certificates and carry on
-		certResp, err := getCertificatesForAccount(config.Client, config.ServiceAccount)
+		certResp, err := getCertificatesForAccount(client, config.ServiceAccount)
 		if err != nil {
 			return err
 		}
@@ -170,7 +171,7 @@ func (s *SigningMethodGCPImpl) Verify(signingString, signature string, key inter
 		if c, ok := getCertsFromCache(config.ServiceAccount); ok {
 			certs = c
 		} else {
-			certResponse, err := getCertificatesForAccount(config.Client, config.ServiceAccount)
+			certResponse, err := getCertificatesForAccount(client, config.ServiceAccount)
 			if err != nil {
 				return err
 			}
