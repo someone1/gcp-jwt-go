@@ -97,12 +97,13 @@ func (s *SigningMethodGCPJWTImpl) Sign(signingString string, key interface{}) (s
 	}
 
 	// Default config.OAuth2HTTPClient is a google.DefaultClient
-	if config.OAuth2HTTPClient == nil {
+	client := config.OAuth2HTTPClient
+	if client == nil {
 		c, err := getDefaultOauthClient(ctx)
 		if err != nil {
 			return "", err
 		}
-		config.OAuth2HTTPClient = c
+		client = c
 	}
 
 	// Default the ProjectID to a wildcard
@@ -125,7 +126,7 @@ func (s *SigningMethodGCPJWTImpl) Sign(signingString string, key interface{}) (s
 	name := fmt.Sprintf("projects/%s/serviceAccounts/%s", config.ProjectID, config.ServiceAccount)
 
 	// Do the call
-	iamService, err := iam.New(config.OAuth2HTTPClient)
+	iamService, err := iam.New(client)
 	if err != nil {
 		return "", err
 	}
