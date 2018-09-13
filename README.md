@@ -1,6 +1,15 @@
-# gcp-jwt-go
+# gcp-jwt-go [![GoDoc](https://godoc.org/github.com/someone1/gcp-jwt-go?status.svg)](https://godoc.org/github.com/someone1/gcp-jwt-go) [![Go Report Card](https://goreportcard.com/badge/github.com/someone1/gcp-jwt-go)](https://goreportcard.com/report/github.com/someone1/gcp-jwt-go)
 
-Google Cloud Platform (IAM & AppEngine) jwt-go implementations
+Google Cloud Platform (KMS, IAM & AppEngine) jwt-go implementations
+
+** BREAKING CHANGES WITH v2 **
+To continue using the older version, please import as follows: `import "gopkg.in/someone1/gcp-jwt-go.v1"`
+
+- Package name changed from gcp_jwt to gcpjwt
+- Refactoring of code (including exported functions/structs)
+
+** New with V2: **
+Google Cloud KMS [now supports signatures](https://cloud.google.com/kms/docs/create-validate-signatures) and support has been added to gcp-jwt-go!
 
 Basic implementation of using the [IAM SignJwt API](https://cloud.google.com/iam/reference/rest/v1/projects.serviceAccounts/signJwt) on Google Cloud Platform to sign JWT tokens using the dgrijalva/jwt-go package. Should work across most environments (including AppEngine)!
 
@@ -120,7 +129,7 @@ ctx := gcp_jwt.NewContext(ctx, config)
 
 ## Tips
 
-* Create a separate service account to sign on behalf of for your projects unless you NEED to use your default service account (e.g. the AppEngine service account). This way you can limit the scope of access for any leaked credentials. You'll have to grant the `roles/iam.serviceAccountTokenCreator` role to any user/group/serviceaccount you want to be able to sign on behalf of the new service account (resource: `projects/-/serviceAccounts/<serviceaccount>`).
-* If using outside of GCP, be sure to put credentials for an account that can access the service account for signing tokens in a well known location:
+- Create a separate service account to sign on behalf of for your projects unless you NEED to use your default service account (e.g. the AppEngine service account). This way you can limit the scope of access for any leaked credentials. You'll have to grant the `roles/iam.serviceAccountTokenCreator` role to any user/group/serviceaccount you want to be able to sign on behalf of the new service account (resource: `projects/-/serviceAccounts/<serviceaccount>`).
+- If using outside of GCP, be sure to put credentials for an account that can access the service account for signing tokens in a well known location:
   1. A JSON file whose path is specified by the GOOGLE_APPLICATION_CREDENTIALS environment variable.
   2. A JSON file in a location known to the gcloud command-line tool. On Windows, this is %APPDATA%/gcloud/application_default_credentials.json. On other systems, $HOME/.config/gcloud/application_default_credentials.json.

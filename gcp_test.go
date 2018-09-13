@@ -1,4 +1,4 @@
-package gcp_jwt_test
+package gcpjwt_test
 
 import (
 	"io/ioutil"
@@ -56,13 +56,13 @@ func init() {
 }
 
 func TestGCPVerify(t *testing.T) {
-	config := &gcp_jwt.IAMSignBlobConfig{
+	config := &gcpjwt.IAMSignBlobConfig{
 		ServiceAccount: jwtConfig.Email,
 	}
-	configJWT := &gcp_jwt.IAMSignJWTConfig{
+	configJWT := &gcpjwt.IAMSignJWTConfig{
 		ServiceAccount: jwtConfig.Email,
 	}
-	c := gcp_jwt.NewContextJWT(gcp_jwt.NewContext(context.Background(), config), configJWT)
+	c := gcpjwt.NewContextJWT(gcpjwt.NewContext(context.Background(), config), configJWT)
 	for _, data := range gcpTestData {
 		parts := strings.Split(data.tokenString, ".")
 
@@ -78,13 +78,13 @@ func TestGCPVerify(t *testing.T) {
 }
 
 func TestGCPSign(t *testing.T) {
-	config := &gcp_jwt.IAMSignBlobConfig{
+	config := &gcpjwt.IAMSignBlobConfig{
 		ServiceAccount: jwtConfig.Email,
 	}
-	configJWT := &gcp_jwt.IAMSignJWTConfig{
+	configJWT := &gcpjwt.IAMSignJWTConfig{
 		ServiceAccount: jwtConfig.Email,
 	}
-	c := gcp_jwt.NewContextJWT(gcp_jwt.NewContext(context.Background(), config), configJWT)
+	c := gcpjwt.NewContextJWT(gcpjwt.NewContext(context.Background(), config), configJWT)
 	for _, data := range gcpTestData {
 		parts := strings.Split(data.tokenString, ".")
 		method := jwt.GetSigningMethod(data.alg)
@@ -122,7 +122,7 @@ func TestOverrideRS256(t *testing.T) {
 		t.Errorf("Expected Alg() == RS256, got %v instead", method.Alg())
 	}
 
-	gcp_jwt.OverrideRS256()
+	gcpjwt.OverrideRS256()
 	method = jwt.GetSigningMethod("RS256")
 	if method.Alg() == "RS256" {
 		t.Errorf("Expected Alg() != RS256, got %v instead", method.Alg())

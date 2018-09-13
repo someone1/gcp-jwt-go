@@ -1,6 +1,6 @@
 // +build !appengine
 
-package gcp_jwt
+package gcpjwt
 
 import (
 	"net/http"

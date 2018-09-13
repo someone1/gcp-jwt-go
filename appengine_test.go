@@ -1,6 +1,6 @@
 // +build appengine appenginevm
 
-package gcp_jwt_test
+package gcpjwt_test
 
 import (
 	"strings"
