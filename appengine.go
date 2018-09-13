@@ -1,6 +1,6 @@
 // +build appengine appenginevm
 
-package gcp_jwt
+package gcpjwt
 
 import (
 	"crypto"

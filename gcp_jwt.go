@@ -1,4 +1,4 @@
-package gcp_jwt
+package gcpjwt
 
 import (
 	"crypto/sha256"
