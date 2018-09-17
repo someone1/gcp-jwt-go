@@ -19,7 +19,7 @@ import (
 // Audience claim to the one provided, or use https:// + request.Host if blank. NOTE: If using the signJwt method,
 // you MUST call gcpjwt.OverrideRS256WithIAMJWT().
 //
-// Complimentary to https://github.com/someone1/gcp-jwt-go/oauth2
+// Complimentary to https://gopkg.in/someone1/gcp-jwt-go.v2/oauth2
 func NewHandler(ctx context.Context, config *gcpjwt.IAMConfig, audience string) func(http.Handler) http.Handler {
 	ctx = gcpjwt.NewIAMContext(ctx, config)
 
