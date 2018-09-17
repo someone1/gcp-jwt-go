@@ -73,7 +73,7 @@ func (s *signingMethodIAM) Sign(signingString string, key interface{}) (string, 
 	return s.sign(iamService, config, signingString)
 }
 
-// Keyfunc is a helper meant that returns a jwt.Keyfunc. It will handle pulling and selecting the certificates
+// VerfiyKeyfunc is a helper meant that returns a jwt.Keyfunc. It will handle pulling and selecting the certificates
 // to verify signatures with, caching when enabled.
 func VerfiyKeyfunc(ctx context.Context, config *IAMConfig) jwt.Keyfunc {
 	return func(token *jwt.Token) (interface{}, error) {

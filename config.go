@@ -12,7 +12,11 @@ import (
 type iamType int
 
 const (
+	// IAMBlobType is used as a hint in the config to let various parts of the library know you intend to use the
+	// signBlob IAM API.
 	IAMBlobType iamType = iota + 1
+	// IAMJwtType is used as a hint in the config to let various parts of the library know you intend to use the
+	// signJwt IAM API.
 	IAMJwtType
 )
 
@@ -59,12 +63,12 @@ type IAMConfig struct {
 	gcpConfig
 }
 
-// NewContext returns a new context.Context that carries a provided IAMConfig value
+// NewIAMContext returns a new context.Context that carries a provided IAMConfig value
 func NewIAMContext(parent context.Context, val *IAMConfig) context.Context {
 	return context.WithValue(parent, iamConfigKey{}, val)
 }
 
-// FromContext extracts a IAMConfig from a context.Context
+// IAMFromContext extracts a IAMConfig from a context.Context
 func IAMFromContext(ctx context.Context) (*IAMConfig, bool) {
 	val, ok := ctx.Value(iamConfigKey{}).(*IAMConfig)
 	return val, ok
