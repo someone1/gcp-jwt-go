@@ -61,7 +61,7 @@ func (ts *jwtAccessTokenSource) Token() (*oauth2.Token, error) {
 	case gcpjwt.IAMJwtType:
 		token = jwt.New(gcpjwt.SigningMethodIAMJWT)
 	default:
-		return nil, fmt.Errorf("jwtmiddlware: unknown token type `%v` provided", ts.jwtConfig.IAMType)
+		return nil, fmt.Errorf("gcpjwt/oauth2: unknown token type `%v` provided", ts.jwtConfig.IAMType)
 	}
 
 	token.Claims = claims
@@ -73,7 +73,7 @@ func (ts *jwtAccessTokenSource) Token() (*oauth2.Token, error) {
 
 	at, err := token.Method.Sign(signingString, ts.ctx)
 	if err != nil {
-		return nil, fmt.Errorf("gcp_jwt.oauth2: could not sign JWT: %v", err)
+		return nil, fmt.Errorf("gcpjwt/oauth2: could not sign JWT: %v", err)
 	}
 
 	if ts.jwtConfig.IAMType == gcpjwt.IAMBlobType && !ts.jwtConfig.InjectKeyID {
