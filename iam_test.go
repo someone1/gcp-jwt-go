@@ -100,7 +100,7 @@ func TestIAMSignAndVerify(t *testing.T) {
 			}
 
 			token.Method = method
-			keyFunc := VerfiyKeyfunc(c, config)
+			keyFunc := IAMVerfiyKeyfunc(c, config)
 			key, err := keyFunc(token)
 			if err != nil {
 				t.Fatalf("[%v] Error getting key: %v", data.name, err)

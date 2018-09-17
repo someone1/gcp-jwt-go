@@ -1,6 +1,7 @@
 package gcpjwt
 
 import (
+	"context"
 	"encoding/base64"
 	"fmt"
 	"net/http"
@@ -34,7 +35,7 @@ func OverrideRS256WithIAMBlob() {
 	})
 }
 
-func signBlob(iamService *iam.Service, config *IAMConfig, signingString string) (string, error) {
+func signBlob(ctx context.Context, iamService *iam.Service, config *IAMConfig, signingString string) (string, error) {
 	// Prepare the call
 	signReq := &iam.SignBlobRequest{
 		BytesToSign: base64.StdEncoding.EncodeToString([]byte(signingString)),
@@ -42,7 +43,7 @@ func signBlob(iamService *iam.Service, config *IAMConfig, signingString string) 
 	name := fmt.Sprintf("projects/%s/serviceAccounts/%s", config.ProjectID, config.ServiceAccount)
 
 	// Do the call
-	signResp, err := iamService.Projects.ServiceAccounts.SignBlob(name, signReq).Do()
+	signResp, err := iamService.Projects.ServiceAccounts.SignBlob(name, signReq).Context(ctx).Do()
 	if err != nil {
 		return "", err
 	}

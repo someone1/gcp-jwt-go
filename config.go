@@ -26,12 +26,10 @@ var (
 )
 
 type iamConfigKey struct{}
+type kmsConfigKey struct{}
 
-// gcpConfig common config elements between signing methods - not to be used on its own
-type gcpConfig struct {
-	// ProjectID is the project id that contains the service account you want to sign with. Defaults to "-" to infer the project from the account
-	ProjectID string
-
+// GCPConfig common config elements between signing methods - not to be used on its own
+type GCPConfig struct {
 	// OAuth2HTTPClient is a user provided oauth2 authenticated *http.Client to use, google.DefaultClient used otherwise
 	// Used for signing requests
 	OAuth2HTTPClient *http.Client
@@ -47,12 +45,15 @@ type gcpConfig struct {
 
 	// InjectKeyID will overwrite the provided header with one that contains the Key ID of the key used to sign the JWT.
 	// Note that the IAM JWT signing method does this on its own and this is only applicable for the IAM Blob and Cloud KMS
-	// signing methods.
+	// signing methods. For CloudKMS, this will be a hash of the KeyPath configured.
 	InjectKeyID bool
 }
 
 // IAMConfig is relevant for both the signBlob and signJWT IAM API use-cases
 type IAMConfig struct {
+	// ProjectID is the project id that contains the service account you want to sign with. Defaults to "-" to infer the project from the account
+	ProjectID string
+
 	// Service account can be the email address or the uniqueId of the service account used to sign the JWT with
 	ServiceAccount string
 
@@ -60,7 +61,15 @@ type IAMConfig struct {
 	// Used for the jwtmiddleware and oauth2 packages.
 	IAMType iamType
 
-	gcpConfig
+	GCPConfig
+}
+
+// KMSConfig is used to sign/verify JWTs with Google Cloud KMS
+type KMSConfig struct {
+	// KeyPath is the name of the key to use in the format of '/projects/-/locations/...'
+	KeyPath string
+
+	GCPConfig
 }
 
 // NewIAMContext returns a new context.Context that carries a provided IAMConfig value
@@ -71,6 +80,17 @@ func NewIAMContext(parent context.Context, val *IAMConfig) context.Context {
 // IAMFromContext extracts a IAMConfig from a context.Context
 func IAMFromContext(ctx context.Context) (*IAMConfig, bool) {
 	val, ok := ctx.Value(iamConfigKey{}).(*IAMConfig)
+	return val, ok
+}
+
+// NewKMSContext returns a new context.Context that carries a provided KMSConfig value
+func NewKMSContext(parent context.Context, val *KMSConfig) context.Context {
+	return context.WithValue(parent, kmsConfigKey{}, val)
+}
+
+// KMSFromContext extracts a KMSConfig from a context.Context
+func KMSFromContext(ctx context.Context) (*KMSConfig, bool) {
+	val, ok := ctx.Value(kmsConfigKey{}).(*KMSConfig)
 	return val, ok
 }
 

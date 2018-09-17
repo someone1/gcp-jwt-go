@@ -11,27 +11,7 @@ import (
 
 type signingMethodIAM struct {
 	alg  string
-	sign func(iamService *iam.Service, config *IAMConfig, signingString string) (string, error)
-}
-
-func getConfigFromKey(key interface{}) (context.Context, *IAMConfig, error) {
-	var ctx context.Context
-
-	// check to make sure the key is a context.Context
-	switch k := key.(type) {
-	case context.Context:
-		ctx = k
-	default:
-		return nil, nil, jwt.ErrInvalidKey
-	}
-
-	// Get the IAMConfig from the context
-	config, ok := IAMFromContext(ctx)
-	if !ok {
-		return ctx, nil, ErrMissingConfig
-	}
-
-	return ctx, config, nil
+	sign func(ctx context.Context, iamService *iam.Service, config *IAMConfig, signingString string) (string, error)
 }
 
 func (s *signingMethodIAM) Alg() string {
@@ -43,10 +23,20 @@ func (s *signingMethodIAM) Alg() string {
 // passed as the key containing a IAMConfig value
 // NOTE: The HEADER IS IGNORED for the signJWT API as the API will add its own
 func (s *signingMethodIAM) Sign(signingString string, key interface{}) (string, error) {
-	// Process the key
-	ctx, config, err := getConfigFromKey(key)
-	if err != nil {
-		return "", err
+	var ctx context.Context
+
+	// check to make sure the key is a context.Context
+	switch k := key.(type) {
+	case context.Context:
+		ctx = k
+	default:
+		return "", jwt.ErrInvalidKey
+	}
+
+	// Get the IAMConfig from the context
+	config, ok := IAMFromContext(ctx)
+	if !ok {
+		return "", ErrMissingConfig
 	}
 
 	// Default config.OAuth2HTTPClient is a google.DefaultClient
@@ -70,12 +60,12 @@ func (s *signingMethodIAM) Sign(signingString string, key interface{}) (string, 
 		return "", err
 	}
 
-	return s.sign(iamService, config, signingString)
+	return s.sign(ctx, iamService, config, signingString)
 }
 
-// VerfiyKeyfunc is a helper meant that returns a jwt.Keyfunc. It will handle pulling and selecting the certificates
+// IAMVerfiyKeyfunc is a helper meant that returns a jwt.Keyfunc. It will handle pulling and selecting the certificates
 // to verify signatures with, caching when enabled.
-func VerfiyKeyfunc(ctx context.Context, config *IAMConfig) jwt.Keyfunc {
+func IAMVerfiyKeyfunc(ctx context.Context, config *IAMConfig) jwt.Keyfunc {
 	return func(token *jwt.Token) (interface{}, error) {
 		// Make sure we have the proper header alg
 		if _, ok := token.Method.(*signingMethodIAM); !ok {
