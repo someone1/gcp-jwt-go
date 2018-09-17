@@ -21,7 +21,7 @@ import (
 // The audience is typically a URL that specifies the scope of the credentials or the
 // API endpoint.
 //
-// Complimentary to https://github.com/someone1/gcp-jwt-go/jwtmiddleware
+// Complimentary to https://gopkg.in/someone1/gcp-jwt-go.v2/jwtmiddleware
 func JWTAccessTokenSource(ctx context.Context, config *gcpjwt.IAMConfig, audience string) (oauth2.TokenSource, error) {
 	ctx = gcpjwt.NewIAMContext(ctx, config)
 	ts := &jwtAccessTokenSource{

@@ -1,4 +1,4 @@
-# gcp-jwt-go [![GoDoc](https://godoc.org/github.com/someone1/gcp-jwt-go?status.svg)](https://godoc.org/github.com/someone1/gcp-jwt-go) [![Go Report Card](https://goreportcard.com/badge/github.com/someone1/gcp-jwt-go)](https://goreportcard.com/report/github.com/someone1/gcp-jwt-go) [![Build Status](https://travis-ci.org/someone1/gcp-jwt-go.svg?branch=v2)](https://travis-ci.org/someone1/gcp-jwt-go)
+# gcp-jwt-go [![GoDoc](https://godoc.org/gopkg.in/someone1/gcp-jwt-go.v2?status.svg)](https://godoc.org/gopkg.in/someone1/gcp-jwt-go.v2) [![Go Report Card](https://goreportcard.com/badge/github.com/someone1/gcp-jwt-go)](https://goreportcard.com/report/github.com/someone1/gcp-jwt-go) [![Build Status](https://travis-ci.org/someone1/gcp-jwt-go.svg?branch=v2)](https://travis-ci.org/someone1/gcp-jwt-go)
 
 Google Cloud Platform (KMS, IAM & AppEngine) jwt-go implementations
 
