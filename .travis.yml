@@ -1,0 +1,23 @@
+language: go
+sudo: false
+
+go:
+  - 1.10.x
+  - 1.11.x
+
+env:
+  - GOOGLE_APPLICATION_CREDENTIALS="$GOPATH/src/github.com/someone1/gcp-jwt-go/credentials.json"
+
+before_install:
+  - openssl aes-256-cbc -K $encrypted_b9c0b4811a94_key -iv $encrypted_b9c0b4811a94_iv -in credentials.json.enc -out credentials.json -d
+  - go get github.com/mattn/goveralls
+  - go get github.com/alecthomas/gometalinter
+
+install:
+  - "$GOPATH/bin/gometalinter --install"
+  - make get
+
+script:
+  - make test-coverage
+  - $GOPATH/bin/goveralls -coverprofile=coverage.out -service=travis-ci
+  - make fmt vet build

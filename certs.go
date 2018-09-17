@@ -1,14 +1,13 @@
 package gcpjwt
 
 import (
-	"crypto"
 	"crypto/rsa"
 	"encoding/json"
 	"io/ioutil"
 	"net/http"
 	"time"
 
-	jwt "github.com/dgrijalva/jwt-go"
+	"github.com/dgrijalva/jwt-go"
 	"github.com/pquerna/cachecontrol"
 )
 
@@ -21,7 +20,8 @@ type certResponse struct {
 	expires time.Time
 }
 
-type certificates map[string]string
+// certificates is a map of key id -> public keys
+type certificates map[string]*rsa.PublicKey
 
 func getCertificatesForAccount(hc *http.Client, account string) (*certResponse, error) {
 	req, err := http.NewRequest(http.MethodGet, certificateURL+account, nil)
@@ -40,34 +40,27 @@ func getCertificatesForAccount(hc *http.Client, account string) (*certResponse, 
 		return nil, err
 	}
 
-	certs := make(certificates)
+	certsRaw := make(map[string]string)
 
-	err = json.Unmarshal(b, &certs)
+	err = json.Unmarshal(b, &certsRaw)
 	if err != nil {
 		return nil, err
 	}
 	_, expires, err := cachecontrol.CachableResponse(req, resp, cachecontrol.Options{PrivateCache: true})
 
-	return &certResponse{certs, expires}, err
-}
-
-func verifyWithCerts(sig, hash []byte, certs certificates) error {
-	var certErr error
-	for _, cert := range certs {
-		certErr = verifyWithCert(sig, hash, cert)
-		if certErr == nil {
-			break
-		}
-	}
-
-	return certErr
-}
-
-func verifyWithCert(sig, hash []byte, cert string) error {
-	rsaKey, err := jwt.ParseRSAPublicKeyFromPEM([]byte(cert))
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	return rsa.VerifyPKCS1v15(rsaKey, crypto.SHA256, hash, sig)
+	certs := make(certificates)
+
+	for key, cert := range certsRaw {
+		rsaKey, err := jwt.ParseRSAPublicKeyFromPEM([]byte(cert))
+		if err != nil {
+			return nil, err
+		}
+		certs[key] = rsaKey
+	}
+
+	return &certResponse{certs, expires}, err
 }

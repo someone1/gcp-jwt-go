@@ -1,14 +1,13 @@
-package gcpjwt_test
+package gcpjwt
 
 import (
+	"context"
 	"io/ioutil"
 	"os"
 	"strings"
 	"testing"
 
 	jwt "github.com/dgrijalva/jwt-go"
-	"github.com/someone1/gcp-jwt-go"
-	"golang.org/x/net/context"
 	"golang.org/x/oauth2/google"
 	gjwt "golang.org/x/oauth2/jwt"
 )
@@ -25,14 +24,14 @@ var gcpTestData = []struct {
 	{
 		"basic gcp invalid: foo => bar",
 		"eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJmb28iOiJiYXIifQ.EhkiHkoESI_cG3NPigFrxEk9Z60_oXrOT2vGm9Pn6RDgYNovYORQmmA0zs1AoAOf09ly2Nx2YAg6ABqAYga1AcMFkJljwxTT5fYphTuqpWdy4BELeSYJx5Ty2gmr8e7RonuUztrdD5WfPqLKMm1Ozp_T6zALpRmwTIW0QPnaBXaQD90FplAg46Iy1UlDKr-Eupy0i5SLch5Q-p2ZpaL_5fnTIUDlxC3pWhJTyx_71qDI-mAA_5lE_VdroOeflG56sSmDxopPEG3bFlSu1eowyBfxtu0_CuVd-M42RU75Zc4Gsj6uV77MBtbMrf4_7M_NUTSgoIF3fRqxrj0NzihIBg",
-		"GCP",
+		"IAMBlob",
 		map[string]interface{}{"foo": "bar"},
 		false,
 	},
 	{
 		"basic jwt invalid: foo => bar",
 		"eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJmb28iOiJiYXIifQ.EhkiHkoESI_cG3NPigFrxEk9Z60_oXrOT2vGm9Pn6RDgYNovYORQmmA0zs1AoAOf09ly2Nx2YAg6ABqAYga1AcMFkJljwxTT5fYphTuqpWdy4BELeSYJx5Ty2gmr8e7RonuUztrdD5WfPqLKMm1Ozp_T6zALpRmwTIW0QPnaBXaQD90FplAg46Iy1UlDKr-Eupy0i5SLch5Q-p2ZpaL_5fnTIUDlxC3pWhJTyx_71qDI-mAA_5lE_VdroOeflG56sSmDxopPEG3bFlSu1eowyBfxtu0_CuVd-M42RU75Zc4Gsj6uV77MBtbMrf4_7M_NUTSgoIF3fRqxrj0NzihIBg",
-		"GCPJWT",
+		"IAMJWT",
 		map[string]interface{}{"foo": "bar"},
 		false,
 	},
@@ -55,14 +54,12 @@ func init() {
 	}
 }
 
-func TestGCPVerify(t *testing.T) {
-	config := &gcpjwt.IAMSignBlobConfig{
+func TestIAMInvalidVerify(t *testing.T) {
+	config := &IAMConfig{
 		ServiceAccount: jwtConfig.Email,
 	}
-	configJWT := &gcpjwt.IAMSignJWTConfig{
-		ServiceAccount: jwtConfig.Email,
-	}
-	c := gcpjwt.NewContextJWT(gcpjwt.NewContext(context.Background(), config), configJWT)
+
+	c := NewIAMContext(context.Background(), config)
 	for _, data := range gcpTestData {
 		parts := strings.Split(data.tokenString, ".")
 
@@ -77,42 +74,43 @@ func TestGCPVerify(t *testing.T) {
 	}
 }
 
-func TestGCPSign(t *testing.T) {
-	config := &gcpjwt.IAMSignBlobConfig{
+func TestIAMSignAndVerify(t *testing.T) {
+	config := &IAMConfig{
 		ServiceAccount: jwtConfig.Email,
 	}
-	configJWT := &gcpjwt.IAMSignJWTConfig{
-		ServiceAccount: jwtConfig.Email,
-	}
-	c := gcpjwt.NewContextJWT(gcpjwt.NewContext(context.Background(), config), configJWT)
+
+	c := NewIAMContext(context.Background(), config)
 	for _, data := range gcpTestData {
-		parts := strings.Split(data.tokenString, ".")
-		method := jwt.GetSigningMethod(data.alg)
-		sig, err := method.Sign(strings.Join(parts[0:2], "."), c)
-		if err != nil {
-			t.Errorf("[%v] Error signing token: %v", data.name, err)
-		}
+		t.Run(data.alg, func(t *testing.T) {
+			parts := strings.Split(data.tokenString, ".")
+			method := jwt.GetSigningMethod(data.alg)
+			sig, err := method.Sign(strings.Join(parts[0:2], "."), c)
+			if err != nil {
+				t.Errorf("[%v] Error signing token: %v", data.name, err)
+			}
 
-		if data.alg == "GCPJWT" {
-			parts = strings.Split(sig, ".")
-			sig = parts[2]
-		}
+			token := new(jwt.Token)
+			if data.alg == "IAMJWT" {
+				// This returns the entire JWT, not just the signature!
+				token, parts, err = new(jwt.Parser).ParseUnverified(sig, &jwt.MapClaims{})
+				if err != nil {
+					t.Errorf("[%v] Error parsing token: %v", data.name, token)
+				}
+				sig = parts[2]
+			}
 
-		// With Cache
-		config.DisableCache = false
-		configJWT.DisableCache = false
-		err = method.Verify(strings.Join(parts[0:2], "."), sig, c)
-		if err != nil {
-			t.Errorf("[%v] Error verifying token (with cache): %v", data.name, err)
-		}
+			token.Method = method
+			keyFunc := VerfiyKeyfunc(c, config)
+			key, err := keyFunc(token)
+			if err != nil {
+				t.Errorf("[%v] Error getting key: %v", data.name, err)
+			}
 
-		// Without Cache
-		config.DisableCache = true
-		configJWT.DisableCache = true
-		err = method.Verify(strings.Join(parts[0:2], "."), sig, c)
-		if err != nil {
-			t.Errorf("[%v] Error verifying token (without cache): %v", data.name, err)
-		}
+			err = method.Verify(strings.Join(parts[0:2], "."), sig, key)
+			if err != nil {
+				t.Errorf("[%v] Error verifying token (with cache): %v", data.name, err)
+			}
+		})
 	}
 }
 
@@ -122,9 +120,15 @@ func TestOverrideRS256(t *testing.T) {
 		t.Errorf("Expected Alg() == RS256, got %v instead", method.Alg())
 	}
 
-	gcpjwt.OverrideRS256()
+	OverrideRS256WithIAMJWT()
 	method = jwt.GetSigningMethod("RS256")
-	if method.Alg() == "RS256" {
-		t.Errorf("Expected Alg() != RS256, got %v instead", method.Alg())
+	if method.Alg() != SigningMethodIAMJWT.Alg() {
+		t.Errorf("Expected Alg() == `%s`, got `%s` instead", SigningMethodIAMJWT.Alg(), method.Alg())
+	}
+
+	OverrideRS256WithIAMBlob()
+	method = jwt.GetSigningMethod("RS256")
+	if method.Alg() != SigningMethodIAMBlob.Alg() {
+		t.Errorf("Expected Alg() == `%s`, got `%s` instead", SigningMethodIAMBlob.Alg(), method.Alg())
 	}
 }

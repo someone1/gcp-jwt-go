@@ -5,12 +5,13 @@ package oauth2
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/dgrijalva/jwt-go"
 	"golang.org/x/oauth2"
 
-	gcp_jwt "github.com/someone1/gcp-jwt-go"
+	"github.com/someone1/gcp-jwt-go"
 )
 
 // JWTAccessTokenSource returns a TokenSource that uses the IAM API to sign tokens.
@@ -21,8 +22,8 @@ import (
 // API endpoint.
 //
 // Complimentary to https://github.com/someone1/gcp-jwt-go/jwtmiddleware
-func JWTAccessTokenSource(ctx context.Context, config *gcp_jwt.IAMSignJWTConfig, audience string) (oauth2.TokenSource, error) {
-	ctx = gcp_jwt.NewContextJWT(ctx, config)
+func JWTAccessTokenSource(ctx context.Context, config *gcpjwt.IAMConfig, audience string) (oauth2.TokenSource, error) {
+	ctx = gcpjwt.NewIAMContext(ctx, config)
 	ts := &jwtAccessTokenSource{
 		ctx:       ctx,
 		audience:  audience,
@@ -38,7 +39,7 @@ func JWTAccessTokenSource(ctx context.Context, config *gcp_jwt.IAMSignJWTConfig,
 type jwtAccessTokenSource struct {
 	ctx       context.Context
 	audience  string
-	jwtConfig *gcp_jwt.IAMSignJWTConfig
+	jwtConfig *gcpjwt.IAMConfig
 }
 
 func (ts *jwtAccessTokenSource) Token() (*oauth2.Token, error) {
@@ -53,7 +54,16 @@ func (ts *jwtAccessTokenSource) Token() (*oauth2.Token, error) {
 		Audience:  ts.audience,
 	}
 
-	token := jwt.New(gcp_jwt.SigningMethodGCPJWT)
+	var token *jwt.Token
+	switch ts.jwtConfig.IAMType {
+	case gcpjwt.IAMBlobType:
+		token = jwt.New(gcpjwt.SigningMethodIAMBlob)
+	case gcpjwt.IAMJwtType:
+		token = jwt.New(gcpjwt.SigningMethodIAMJWT)
+	default:
+		return nil, fmt.Errorf("jwtmiddlware: unknown token type `%v` provided", ts.jwtConfig.IAMType)
+	}
+
 	token.Claims = claims
 
 	signingString, err := token.SigningString()
@@ -65,5 +75,10 @@ func (ts *jwtAccessTokenSource) Token() (*oauth2.Token, error) {
 	if err != nil {
 		return nil, fmt.Errorf("gcp_jwt.oauth2: could not sign JWT: %v", err)
 	}
+
+	if ts.jwtConfig.IAMType == gcpjwt.IAMBlobType && !ts.jwtConfig.InjectKeyID {
+		at = strings.Join([]string{signingString, at}, ".")
+	}
+
 	return &oauth2.Token{AccessToken: at, TokenType: "Bearer", Expiry: exp}, nil
 }

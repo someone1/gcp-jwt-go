@@ -1,13 +1,13 @@
-// +build appengine appenginevm
+// +build appengine
 
 package gcpjwt
 
 import (
+	"context"
 	"crypto"
 	"crypto/rsa"
 	"crypto/sha256"
 
-	"golang.org/x/net/context"
 	"google.golang.org/appengine"
 
 	"github.com/dgrijalva/jwt-go"
