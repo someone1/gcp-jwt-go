@@ -15,16 +15,6 @@ func init() {
 	certsCache = cache.New(0, 0)
 }
 
-func getCertFromCache(serviceAccount, keyID string) (string, bool) {
-	certs, found := getCertsFromCache(serviceAccount)
-	if !found {
-		return "", false
-	}
-
-	cert, found := certs[keyID]
-	return cert, found
-}
-
 func getCertsFromCache(serviceAccount string) (certificates, bool) {
 	certsObj, found := certsCache.Get(serviceAccount)
 	if !found {
