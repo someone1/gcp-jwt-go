@@ -86,7 +86,7 @@ func TestIAMSignAndVerify(t *testing.T) {
 			method := jwt.GetSigningMethod(data.alg)
 			sig, err := method.Sign(strings.Join(parts[0:2], "."), c)
 			if err != nil {
-				t.Errorf("[%v] Error signing token: %v", data.name, err)
+				t.Fatalf("[%v] Error signing token: %v", data.name, err)
 			}
 
 			token := new(jwt.Token)
@@ -94,7 +94,7 @@ func TestIAMSignAndVerify(t *testing.T) {
 				// This returns the entire JWT, not just the signature!
 				token, parts, err = new(jwt.Parser).ParseUnverified(sig, &jwt.MapClaims{})
 				if err != nil {
-					t.Errorf("[%v] Error parsing token: %v", data.name, token)
+					t.Fatalf("[%v] Error parsing token: %v", data.name, token)
 				}
 				sig = parts[2]
 			}
@@ -103,7 +103,7 @@ func TestIAMSignAndVerify(t *testing.T) {
 			keyFunc := VerfiyKeyfunc(c, config)
 			key, err := keyFunc(token)
 			if err != nil {
-				t.Errorf("[%v] Error getting key: %v", data.name, err)
+				t.Fatalf("[%v] Error getting key: %v", data.name, err)
 			}
 
 			err = method.Verify(strings.Join(parts[0:2], "."), sig, key)
