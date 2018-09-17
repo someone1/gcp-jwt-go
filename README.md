@@ -1,17 +1,22 @@
-# gcp-jwt-go [![GoDoc](https://godoc.org/gopkg.in/someone1/gcp-jwt-go.v2?status.svg)](https://godoc.org/gopkg.in/someone1/gcp-jwt-go.v2) [![Go Report Card](https://goreportcard.com/badge/github.com/someone1/gcp-jwt-go)](https://goreportcard.com/report/github.com/someone1/gcp-jwt-go) [![Build Status](https://travis-ci.org/someone1/gcp-jwt-go.svg?branch=v2)](https://travis-ci.org/someone1/gcp-jwt-go) [![Coverage Status](https://coveralls.io/repos/github/someone1/gcp-jwt-go/badge.svg?branch=v2)](https://coveralls.io/github/someone1/gcp-jwt-go?branch=v2)
+# gcp-jwt-go (v2) [![GoDoc](https://godoc.org/gopkg.in/someone1/gcp-jwt-go.v2?status.svg)](https://godoc.org/gopkg.in/someone1/gcp-jwt-go.v2) [![Go Report Card](https://goreportcard.com/badge/github.com/someone1/gcp-jwt-go)](https://goreportcard.com/report/github.com/someone1/gcp-jwt-go) [![Build Status](https://travis-ci.org/someone1/gcp-jwt-go.svg?branch=v2)](https://travis-ci.org/someone1/gcp-jwt-go) [![Coverage Status](https://coveralls.io/repos/github/someone1/gcp-jwt-go/badge.svg?branch=v2)](https://coveralls.io/github/someone1/gcp-jwt-go?branch=v2)
 
 Google Cloud Platform (KMS, IAM & AppEngine) jwt-go implementations
 
-** BREAKING CHANGES WITH v2 **
-To continue using the older version, please import as follows: `import "gopkg.in/someone1/gcp-jwt-go.v1"`
+## New with V2:
+
+Google Cloud KMS [now supports signatures](https://cloud.google.com/kms/docs/create-validate-signatures) and support has been added to gcp-jwt-go!
+
+## Breaking Changes with V2
 
 - Package name changed from gcp_jwt to gcpjwt
 - Refactoring of code (including exported functions/structs)
+- Certificate caching is now opt-in vs opt-out
 
-** New with V2: **
-Google Cloud KMS [now supports signatures](https://cloud.google.com/kms/docs/create-validate-signatures) and support has been added to gcp-jwt-go!
+To continue using the older version, please import as follows: `import "gopkg.in/someone1/gcp-jwt-go.v1"`
 
-Basic implementation of using the [IAM SignJwt API](https://cloud.google.com/iam/reference/rest/v1/projects.serviceAccounts/signJwt) on Google Cloud Platform to sign JWT tokens using the dgrijalva/jwt-go package. Should work across most environments (including AppEngine)!
+### Other Features
+
+gcp-jwt-go has a basic implementation of using the [IAM SignJwt API](https://cloud.google.com/iam/reference/rest/v1/projects.serviceAccounts/signJwt) on Google Cloud Platform to sign JWT tokens using the dgrijalva/jwt-go package. Should work across most environments (including AppEngine)!
 
 The old method of using the [IAM SignBlob API](https://cloud.google.com/iam/reference/rest/v1/projects.serviceAccounts/signBlob) is still supported.
 
@@ -19,7 +24,7 @@ The old method of using the [IAM SignBlob API](https://cloud.google.com/iam/refe
 
 Basic implementation of using the built-in [App Identity API](https://cloud.google.com/appengine/docs/go/appidentity/) of AppEngine to sign JWT tokens using the dgrijalva/jwt-go package.
 
-## Basic usage (new - Recommended across all platforms):
+## Basic usage (using the IAM API):
 
 ### Setup
 
@@ -30,7 +35,9 @@ import (
 
 func init() {
     // Unless we want to keep the original RS256 implementation alive, override it (recommended)
-    gcp_jwt.OverrideRS256()
+    gcpjwt.OverrideRS256WithIAMJWT() // For signJwt
+
+    gcpjwt.OverrideRS256WithIAMBlob() // For signBlob
 }
 ```
 
@@ -45,17 +52,22 @@ import (
 )
 
 func makeToken() string {
-    token := jwt.New(gcp_jwt.SigningMethodGCPJWT)
-    config := &gcp_jwt.IAMSignJWTConfig{
+    token := jwt.New(gcpjwt.SigningMethodGCPJWT)
+    config := &gcpjwt.IAMConfig{
         ServiceAccount: "app-id@appspot.gserviceaccount.com",
+        IAMType:        gcpjwt.IAMJwtType, // or gcpjwt.IAMBlobType
     }
-    ctx := gcp_jwt.NewContextJWT(context.Background(), config)
+    ctx := gcpjwt.NewIAMContext(context.Background(), config)
+    token.Method = gcpjwt.SigningMethodIAMJWT // or gcpjwt.SigningMethodIAMBlob
 
     // Fill in Token claims
 
-    // !!IMPORTANT!! Due to the way the signJwt API returns tokens, we can't use the standard signing process
+    // For signBlob
+    tokenString, err := token.SignedString(ctx)
 
-    // To Sign
+    // For signJwt
+    // !!IMPORTANT!! Due to the way the signJwt API returns tokens, we can't use the standard signing process
+    // to sign
     signingString, err := token.SigningString()
     // handle err
     tokenString, terr := token.Method.Sign(signingString, ctx)
@@ -77,25 +89,23 @@ import (
 )
 
 func validateToken(tokenString string) {
-    config := &gcp_jwt.IAMSignJWTConfig{
+    config := &gcpjwt.IAMConfig{
         ServiceAccount: "app-id@appspot.gserviceaccount.com",
+        IAMType:        gcpjwt.IAMJwtType, // or gcpjwt.IAMBlobType
     }
-    ctx := gcp_jwt.NewContextJWT(context.Background(), config)
+    config.EnableCache = true // Enable certificates cache
 
-    // To Verify (if we called OverrideRS256)
-    token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
-        // We do NOT have to check the Alg() here as that's done for us in the verification call, only RS256 is used
-        return ctx, nil
-    })
+    // To Verify (if we called OverrideRS256WithIAMJWT() or OverrideRS256WithIAMBlob())
+    token, err := jwt.Parse(tokenString, gcpjwt.VerfiyKeyfunc(context.Background(), config))
 
-    // If we DID NOT call OverrideRS256
+    // If we DID NOT call a OverrideRS256 function
     // This is basically copying the https://github.com/dgrijalva/jwt-go/blob/master/parser.go#L23 ParseWithClaims function here but forcing our own method vs getting one based on the Alg field
     // Or Try and parse, Ignore the result and try with the proper method:
     token, _ := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
         return nil, nil
     })
     parts := strings.Split(token.Raw, ".")
-    token.Method = gcp_jwt.SigningMethodGCPJWT
+    token.Method = gcpjwt.SigningMethodIAMJWT // or gcpjwt.SigningMethodIAMBlob
     if err := token.Method.Verify(strings.Join(parts[0:2], "."), token.Signature, ctx); err != nil {
         // handle error
     } else {
@@ -113,15 +123,15 @@ import (
 )
 
 // AppEngine Only Method
-token := jwt.New(gcp_jwt.SigningMethodAppEngine)
+token := jwt.New(gcpjwt.SigningMethodAppEngine)
 
 // OR
 
-token := jwt.New(gcp_jwt.SigningMethodGCP)
-config := &gcp_jwt.IAMSignBlobConfig{
+token := jwt.New(gcpjwt.SigningMethodGCP)
+config := &gcpjwt.IAMSignBlobConfig{
     ServiceAccount: "app-id@appspot.gserviceaccount.com",
 }
-ctx := gcp_jwt.NewContext(ctx, config)
+ctx := gcpjwt.NewContext(ctx, config)
 
 // Pass in a context.Context as the key for Sign/Verify
 // Same process as any other signing method in the jwt-go package
