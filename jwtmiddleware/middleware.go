@@ -23,7 +23,7 @@ import (
 func NewHandler(ctx context.Context, config *gcpjwt.IAMConfig, audience string) func(http.Handler) http.Handler {
 	ctx = gcpjwt.NewIAMContext(ctx, config)
 
-	keyFunc := gcpjwt.VerfiyKeyfunc(ctx, config)
+	keyFunc := gcpjwt.IAMVerfiyKeyfunc(ctx, config)
 
 	return func(h http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

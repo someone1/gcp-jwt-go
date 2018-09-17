@@ -1,6 +1,7 @@
 package gcpjwt
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"strings"
@@ -34,7 +35,7 @@ func OverrideRS256WithIAMJWT() {
 	})
 }
 
-func signJwt(iamService *iam.Service, config *IAMConfig, signingString string) (string, error) {
+func signJwt(ctx context.Context, iamService *iam.Service, config *IAMConfig, signingString string) (string, error) {
 	// Prepare the call
 	// First decode the JSON string and discard the header
 	parts := strings.Split(signingString, ".")
@@ -50,7 +51,7 @@ func signJwt(iamService *iam.Service, config *IAMConfig, signingString string) (
 	name := fmt.Sprintf("projects/%s/serviceAccounts/%s", config.ProjectID, config.ServiceAccount)
 
 	// Do the call
-	signResp, err := iamService.Projects.ServiceAccounts.SignJwt(name, signReq).Do()
+	signResp, err := iamService.Projects.ServiceAccounts.SignJwt(name, signReq).Context(ctx).Do()
 	if err != nil {
 		return "", err
 	}

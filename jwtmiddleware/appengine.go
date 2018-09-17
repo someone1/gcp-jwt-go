@@ -25,7 +25,7 @@ func NewHandler(_ context.Context, config *gcpjwt.IAMConfig, audience string) fu
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			ctx := gcpjwt.NewIAMContext(appengine.NewContext(r), config)
 
-			keyFunc := gcpjwt.VerfiyKeyfunc(ctx, config)
+			keyFunc := gcpjwt.IAMVerfiyKeyfunc(ctx, config)
 			claims := &jwt.StandardClaims{}
 
 			token, err := request.ParseFromRequest(r, request.AuthorizationHeaderExtractor, keyFunc, request.WithClaims(claims))
