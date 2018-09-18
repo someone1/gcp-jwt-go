@@ -17,7 +17,7 @@ import (
 // The token is expected as a Bearer token in the Authorization header and expected to have an Issuer
 // claim equal to the ServiceAccount the provided IAMConfig is configured for. This will also validate the
 // Audience claim to the one provided, or use https:// + request.Host if blank. NOTE: If using the signJwt method,
-// you MUST call gcpjwt.OverrideRS256WithIAMJWT().
+// you MUST call gcpjwt.SigningMethodIAMJWT.Override().
 //
 // Complimentary to https://gopkg.in/someone1/gcp-jwt-go.v2/oauth2
 func NewHandler(ctx context.Context, config *gcpjwt.IAMConfig, audience string) func(http.Handler) http.Handler {

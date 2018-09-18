@@ -1,4 +1,4 @@
-// +build appengine appenginevm
+// +build appengine
 
 package gcpjwt_test
 

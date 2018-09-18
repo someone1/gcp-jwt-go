@@ -76,7 +76,7 @@ func (ts *jwtAccessTokenSource) Token() (*oauth2.Token, error) {
 		return nil, fmt.Errorf("gcpjwt/oauth2: could not sign JWT: %v", err)
 	}
 
-	if ts.jwtConfig.IAMType == gcpjwt.IAMBlobType && !ts.jwtConfig.InjectKeyID {
+	if ts.jwtConfig.IAMType == gcpjwt.IAMBlobType {
 		at = strings.Join([]string{signingString, at}, ".")
 	}
 

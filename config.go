@@ -2,8 +2,11 @@ package gcpjwt
 
 import (
 	"context"
+	"crypto/md5"
 	"errors"
+	"fmt"
 	"net/http"
+	"time"
 
 	"golang.org/x/oauth2/google"
 	"google.golang.org/api/iam/v1"
@@ -37,16 +40,6 @@ type GCPConfig struct {
 	// Client is a user provided *http.Client to use, http.DefaultClient is used otherwise (AppEngine URL Fetch Supported)
 	// Used for verify requests
 	Client *http.Client
-
-	// EnableCache will enable the in-memory caching of public certificates.
-	// The cache will expire certificates when an expiration is known or provided and will refresh the cache if
-	// it is unable to verify a signature from any of the certificates cached.
-	EnableCache bool
-
-	// InjectKeyID will overwrite the provided header with one that contains the Key ID of the key used to sign the JWT.
-	// Note that the IAM JWT signing method does this on its own and this is only applicable for the IAM Blob and Cloud KMS
-	// signing methods. For CloudKMS, this will be a hash of the KeyPath configured.
-	InjectKeyID bool
 }
 
 // IAMConfig is relevant for both the signBlob and signJWT IAM API use-cases
@@ -57,19 +50,43 @@ type IAMConfig struct {
 	// Service account can be the email address or the uniqueId of the service account used to sign the JWT with
 	ServiceAccount string
 
+	// EnableCache will enable the in-memory caching of public certificates.
+	// The cache will expire certificates when an expiration is known or fallback to the configured CacheExpiration
+	EnableCache bool
+
+	// CacheExpiration is the default time to keep the certificates in cache if no expiration time is provided
+	// Use a value of 0 to disable the expiration time fallback. Max reccomneded value is 24 hours.
+	// https://cloud.google.com/iam/docs/understanding-service-accounts#managing_service_account_keys
+	CacheExpiration time.Duration
+
 	// IAMType is a helper used to help clarify which IAM signing method this config is meant for.
 	// Used for the jwtmiddleware and oauth2 packages.
 	IAMType iamType
 
+	lastKeyID string
+
 	GCPConfig
+}
+
+// KeyID will return the last used KeyID to sign the JWT - though it should be noted the signJwt method will always
+// add its own token header which is not parsed back to the token.
+// Helper function for adding the kid header to your token.
+func (i *IAMConfig) KeyID() string {
+	return i.lastKeyID
 }
 
 // KMSConfig is used to sign/verify JWTs with Google Cloud KMS
 type KMSConfig struct {
-	// KeyPath is the name of the key to use in the format of '/projects/-/locations/...'
+	// KeyPath is the name of the key to use in the format of:
+	// "name=projects/*/locations/*/keyRings/*/cryptoKeys/*/cryptoKeyVersions/*"
 	KeyPath string
 
 	GCPConfig
+}
+
+// KeyID will return the MD5 hash of the configured KeyPath. Helper function for adding the kid header to your token.
+func (k *KMSConfig) KeyID() string {
+	return fmt.Sprintf("%x", md5.Sum([]byte(k.KeyPath)))
 }
 
 // NewIAMContext returns a new context.Context that carries a provided IAMConfig value

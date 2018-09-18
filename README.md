@@ -35,9 +35,9 @@ import (
 
 func init() {
     // Unless we want to keep the original RS256 implementation alive, override it (recommended)
-    gcpjwt.OverrideRS256WithIAMJWT() // For signJwt
-
-    gcpjwt.OverrideRS256WithIAMBlob() // For signBlob
+    gcpjwt.SigningMethodIAMJWT.Override() // For signJwt
+    // OR
+    gcpjwt.SigningMethodIAMBlob.Override() // For signBlob
 }
 ```
 
@@ -95,10 +95,10 @@ func validateToken(tokenString string) {
     }
     config.EnableCache = true // Enable certificates cache
 
-    // To Verify (if we called OverrideRS256WithIAMJWT() or OverrideRS256WithIAMBlob())
+    // To Verify (if we called Override() for our method type prior)
     token, err := jwt.Parse(tokenString, gcpjwt.VerfiyKeyfunc(context.Background(), config))
 
-    // If we DID NOT call a OverrideRS256 function
+    // If we DID NOT call the Override() function
     // This is basically copying the https://github.com/dgrijalva/jwt-go/blob/master/parser.go#L23 ParseWithClaims function here but forcing our own method vs getting one based on the Alg field
     // Or Try and parse, Ignore the result and try with the proper method:
     token, _ := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {

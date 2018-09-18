@@ -9,20 +9,31 @@ import (
 	"google.golang.org/api/iam/v1"
 )
 
-type signingMethodIAM struct {
-	alg  string
-	sign func(ctx context.Context, iamService *iam.Service, config *IAMConfig, signingString string) (string, error)
+// SigningMethodIAM is the base implementation for the signBlob and signJwt IAM API JWT signing methods. Not to be used on
+// its own!
+type SigningMethodIAM struct {
+	alg      string
+	override string
+	sign     func(ctx context.Context, iamService *iam.Service, config *IAMConfig, signingString string) (string, error)
 }
 
-func (s *signingMethodIAM) Alg() string {
+// Alg will return the JWT header algorithm identifier this method is configured for.
+func (s *SigningMethodIAM) Alg() string {
 	return s.alg
 }
 
-// Sign implements the Sign method from jwt.SigningMethod
-// For this signing method, a valid context.Context must be
-// passed as the key containing a IAMConfig value
+// Override will override the default JWT implementation of the signing function this IAM API type implements.
+func (s *SigningMethodIAM) Override() {
+	s.alg = s.override
+	jwt.RegisterSigningMethod(s.override, func() jwt.SigningMethod {
+		return s
+	})
+}
+
+// Sign implements the Sign method from jwt.SigningMethod. For this signing method, a valid context.Context must be
+// passed as the key containing a IAMConfig value.
 // NOTE: The HEADER IS IGNORED for the signJWT API as the API will add its own
-func (s *signingMethodIAM) Sign(signingString string, key interface{}) (string, error) {
+func (s *SigningMethodIAM) Sign(signingString string, key interface{}) (string, error) {
 	var ctx context.Context
 
 	// check to make sure the key is a context.Context
@@ -63,47 +74,34 @@ func (s *signingMethodIAM) Sign(signingString string, key interface{}) (string, 
 	return s.sign(ctx, iamService, config, signingString)
 }
 
-// IAMVerfiyKeyfunc is a helper meant that returns a jwt.Keyfunc. It will handle pulling and selecting the certificates
-// to verify signatures with, caching when enabled.
-func IAMVerfiyKeyfunc(ctx context.Context, config *IAMConfig) jwt.Keyfunc {
+type keyFuncHelper struct {
+	compareMethod func(j jwt.SigningMethod) bool
+	certificates  func(ctx context.Context, config *IAMConfig) (certificates, error)
+}
+
+var (
+	iamKeyfunc = &keyFuncHelper{
+		compareMethod: func(j jwt.SigningMethod) bool {
+			_, ok := j.(*SigningMethodIAM)
+			return ok
+		},
+		certificates: getCertificates,
+	}
+)
+
+func (k *keyFuncHelper) verifyKeyfunc(ctx context.Context, config *IAMConfig) jwt.Keyfunc {
 	return func(token *jwt.Token) (interface{}, error) {
 		// Make sure we have the proper header alg
-		if _, ok := token.Method.(*signingMethodIAM); !ok {
+		if !k.compareMethod(token.Method) {
 			return nil, fmt.Errorf("gcpjwt: unexpected signing method: %v", token.Header["alg"])
 		}
-
-		// Default config.Client is a http.DefaultClient
-		client := config.Client
-		if client == nil {
-			client = getDefaultClient(ctx)
+		certs, err := k.certificates(ctx, config)
+		if err != nil {
+			return nil, fmt.Errorf("gcpjwt: could not get certificates: %v", err)
 		}
-
-		// Get the certificates
-		var certs certificates
-		if !config.EnableCache {
-			// Not leveraging the cache, do a HTTP request for the certificates and carry on
-			certResp, cerr := getCertificatesForAccount(client, config.ServiceAccount)
-			if cerr != nil {
-				return nil, cerr
-			}
-			certs = certResp.certs
-		} else {
-			if certsResp, ok := getCertsFromCache(config.ServiceAccount); ok {
-				certs = certsResp
-			} else {
-				// Nothing in cache, let's hydrate
-				certResp, cerr := getCertificatesForAccount(client, config.ServiceAccount)
-				if cerr != nil {
-					return nil, cerr
-				}
-				updateCache(config.ServiceAccount, certResp.certs, certResp.expires)
-				certs = certResp.certs
-			}
-		}
-
 		var certList []*rsa.PublicKey
 		kid, ok := token.Header["kid"].(string)
-		if ok && kid != "" {
+		if ok {
 			if cert, ok := certs[kid]; ok {
 				certList = append(certList, cert)
 			}
@@ -119,13 +117,17 @@ func IAMVerfiyKeyfunc(ctx context.Context, config *IAMConfig) jwt.Keyfunc {
 
 		return certList, nil
 	}
-
 }
 
-// Verify implements the Verify method from jwt.SigningMethod
-// This will expect key type of []*rsa.PublicKey.
+// IAMVerfiyKeyfunc is a helper meant that returns a jwt.Keyfunc. It will handle pulling and selecting the certificates
+// to verify signatures with, caching when enabled.
+func IAMVerfiyKeyfunc(ctx context.Context, config *IAMConfig) jwt.Keyfunc {
+	return iamKeyfunc.verifyKeyfunc(ctx, config)
+}
+
+// Verify implements the Verify method from jwt.SigningMethod. This will expect key type of []*rsa.PublicKey.
 // https://firebase.google.com/docs/auth/admin/verify-id-tokens
-func (s *signingMethodIAM) Verify(signingString, signature string, key interface{}) error {
+func (s *SigningMethodIAM) Verify(signingString, signature string, key interface{}) error {
 	rsaKeys, ok := key.([]*rsa.PublicKey)
 	if !ok {
 		return jwt.ErrInvalidKeyType
