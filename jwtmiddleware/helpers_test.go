@@ -101,15 +101,15 @@ func TestHelpers(t *testing.T) {
 			want   int
 		}{
 			{
-				"InvalidHost",
-				"http://test.com",
+				"MissingToken",
+				audience,
 				nil,
 				http.StatusForbidden,
 			},
 			{
-				"MissingToken",
-				audience,
-				nil,
+				"InvalidHost",
+				"http://invalid.com",
+				testSources[int(gcpjwt.IAMBlobType)],
 				http.StatusForbidden,
 			},
 			{
@@ -126,7 +126,7 @@ func TestHelpers(t *testing.T) {
 			},
 		}
 		// Required for this to work
-		gcpjwt.OverrideRS256WithIAMJWT()
+		gcpjwt.SigningMethodIAMJWT.Override()
 		for _, test := range tests {
 			t.Run(test.name, func(t *testing.T) {
 				w := httptest.NewRecorder()

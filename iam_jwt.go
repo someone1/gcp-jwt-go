@@ -11,26 +11,18 @@ import (
 )
 
 var (
-	// SigningMethodIAMJWT implements signing JWTs with
-	// the IAM signJwt API.
+	// SigningMethodIAMJWT implements signing JWTs with the IAM signJwt API.
 	// https://cloud.google.com/iam/reference/rest/v1/projects.serviceAccounts/signJwt
-	SigningMethodIAMJWT *signingMethodIAM
+	SigningMethodIAMJWT *SigningMethodIAM
 )
 
 func init() {
-	SigningMethodIAMJWT = &signingMethodIAM{
-		alg:  "IAMJWT", // NOT USED
-		sign: signJwt,
+	SigningMethodIAMJWT = &SigningMethodIAM{
+		alg:      "IAMJWT", // NOT USED
+		sign:     signJwt,
+		override: jwt.SigningMethodRS256.Alg(),
 	}
 	jwt.RegisterSigningMethod(SigningMethodIAMJWT.Alg(), func() jwt.SigningMethod {
-		return SigningMethodIAMJWT
-	})
-}
-
-// OverrideRS256WithIAMJWT will replace the original RS256 method with the signJwt method
-func OverrideRS256WithIAMJWT() {
-	SigningMethodIAMJWT.alg = jwt.SigningMethodRS256.Alg()
-	jwt.RegisterSigningMethod(jwt.SigningMethodRS256.Alg(), func() jwt.SigningMethod {
 		return SigningMethodIAMJWT
 	})
 }
@@ -60,6 +52,8 @@ func signJwt(ctx context.Context, iamService *iam.Service, config *IAMConfig, si
 	if signResp.HTTPStatusCode != http.StatusOK {
 		return "", fmt.Errorf("gcpjwt: expected response code `%d` from signing request, got `%d`", http.StatusOK, signResp.HTTPStatusCode)
 	}
+
+	config.lastKeyID = signResp.KeyId
 
 	return signResp.SignedJwt, nil
 }

@@ -11,26 +11,18 @@ import (
 )
 
 var (
-	// SigningMethodIAMBlob implements signing JWTs with
-	// the IAM signBlob API.
+	// SigningMethodIAMBlob implements signing JWTs with the IAM signBlob API.
 	// https://cloud.google.com/iam/reference/rest/v1/projects.serviceAccounts/signBlob
-	SigningMethodIAMBlob *signingMethodIAM
+	SigningMethodIAMBlob *SigningMethodIAM
 )
 
 func init() {
-	SigningMethodIAMBlob = &signingMethodIAM{
-		alg:  "IAMBlob",
-		sign: signBlob,
+	SigningMethodIAMBlob = &SigningMethodIAM{
+		alg:      "IAMBlob",
+		sign:     signBlob,
+		override: jwt.SigningMethodRS256.Alg(),
 	}
 	jwt.RegisterSigningMethod(SigningMethodIAMBlob.Alg(), func() jwt.SigningMethod {
-		return SigningMethodIAMBlob
-	})
-}
-
-// OverrideRS256WithIAMBlob will replace the original RS256 method with the signBlob method
-func OverrideRS256WithIAMBlob() {
-	SigningMethodIAMBlob.alg = jwt.SigningMethodRS256.Alg()
-	jwt.RegisterSigningMethod(jwt.SigningMethodRS256.Alg(), func() jwt.SigningMethod {
 		return SigningMethodIAMBlob
 	})
 }
@@ -52,6 +44,8 @@ func signBlob(ctx context.Context, iamService *iam.Service, config *IAMConfig, s
 	if signResp.HTTPStatusCode != http.StatusOK {
 		return "", fmt.Errorf("unexpected response code from signing request, expected %d but got %d instead", http.StatusOK, signResp.HTTPStatusCode)
 	}
+
+	config.lastKeyID = signResp.KeyId
 
 	signature, err := base64.StdEncoding.DecodeString(signResp.Signature)
 	if err != nil {

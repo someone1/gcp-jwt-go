@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	jwt "github.com/dgrijalva/jwt-go"
+	"github.com/dgrijalva/jwt-go"
 	"golang.org/x/oauth2/google"
 	gjwt "golang.org/x/oauth2/jwt"
 )
@@ -86,7 +86,8 @@ func TestIAMSignAndVerify(t *testing.T) {
 			method := jwt.GetSigningMethod(data.alg)
 			sig, err := method.Sign(strings.Join(parts[0:2], "."), c)
 			if err != nil {
-				t.Fatalf("[%v] Error signing token: %v", data.name, err)
+				t.Errorf("[%v] Error signing token: %v", data.name, err)
+				return
 			}
 
 			token := new(jwt.Token)
@@ -94,7 +95,8 @@ func TestIAMSignAndVerify(t *testing.T) {
 				// This returns the entire JWT, not just the signature!
 				token, parts, err = new(jwt.Parser).ParseUnverified(sig, &jwt.MapClaims{})
 				if err != nil {
-					t.Fatalf("[%v] Error parsing token: %v", data.name, token)
+					t.Errorf("[%v] Error parsing token: %v", data.name, token)
+					return
 				}
 				sig = parts[2]
 			}
@@ -103,7 +105,8 @@ func TestIAMSignAndVerify(t *testing.T) {
 			keyFunc := IAMVerfiyKeyfunc(c, config)
 			key, err := keyFunc(token)
 			if err != nil {
-				t.Fatalf("[%v] Error getting key: %v", data.name, err)
+				t.Errorf("[%v] Error getting key: %v", data.name, err)
+				return
 			}
 
 			err = method.Verify(strings.Join(parts[0:2], "."), sig, key)
@@ -114,21 +117,113 @@ func TestIAMSignAndVerify(t *testing.T) {
 	}
 }
 
-func TestOverrideRS256(t *testing.T) {
+func TestSigningMethodIAM_Override(t *testing.T) {
 	method := jwt.GetSigningMethod("RS256")
 	if method.Alg() != "RS256" {
 		t.Errorf("Expected Alg() == RS256, got %v instead", method.Alg())
 	}
 
-	OverrideRS256WithIAMJWT()
+	SigningMethodIAMJWT.Override()
 	method = jwt.GetSigningMethod("RS256")
-	if method.Alg() != SigningMethodIAMJWT.Alg() {
-		t.Errorf("Expected Alg() == `%s`, got `%s` instead", SigningMethodIAMJWT.Alg(), method.Alg())
+	if method != SigningMethodIAMJWT {
+		t.Errorf("Expected method == `%T`, got `%T` instead", SigningMethodIAMJWT, method)
 	}
 
-	OverrideRS256WithIAMBlob()
+	SigningMethodIAMBlob.Override()
 	method = jwt.GetSigningMethod("RS256")
-	if method.Alg() != SigningMethodIAMBlob.Alg() {
-		t.Errorf("Expected Alg() == `%s`, got `%s` instead", SigningMethodIAMBlob.Alg(), method.Alg())
+	if method != SigningMethodIAMBlob {
+		t.Errorf("Expected method == `%T`, got `%T` instead", SigningMethodIAMBlob, method)
+	}
+}
+
+func TestSigningMethodIAM_Sign(t *testing.T) {
+	type args struct {
+		signingString string
+		key           interface{}
+	}
+	tests := []struct {
+		name    string
+		args    args
+		wantErr error
+	}{
+		{
+			"InvalidKey",
+			args{
+				"",
+				"",
+			},
+			jwt.ErrInvalidKey,
+		},
+		{
+			"MissingConfig",
+			args{
+				"",
+				context.Background(),
+			},
+			ErrMissingConfig,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, err := SigningMethodIAMJWT.Sign(tt.args.signingString, tt.args.key)
+			if err != tt.wantErr {
+				t.Errorf("SigningMethodIAM.Sign() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+		})
+	}
+}
+
+func TestIAMVerfiyKeyfunc(t *testing.T) {
+	type args struct {
+		ctx    context.Context
+		config *IAMConfig
+		token  *jwt.Token
+	}
+	tests := []struct {
+		name    string
+		args    args
+		wantErr bool
+	}{
+		{
+			"WrongMethod",
+			args{
+				context.Background(),
+				&IAMConfig{
+					ServiceAccount: jwtConfig.Email,
+				},
+				&jwt.Token{
+					Method: jwt.SigningMethodPS256,
+					Header: map[string]interface{}{
+						"alg": "PS256",
+					},
+				},
+			},
+			true,
+		},
+		{
+			"IncorrectKid",
+			args{
+				context.Background(),
+				&IAMConfig{
+					ServiceAccount: jwtConfig.Email,
+				},
+				&jwt.Token{
+					Method: SigningMethodIAMJWT,
+					Header: map[string]interface{}{
+						"alg": SigningMethodIAMJWT.Alg(),
+						"kid": "invalid",
+					},
+				},
+			},
+			true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if _, gotErr := IAMVerfiyKeyfunc(tt.args.ctx, tt.args.config)(tt.args.token); (gotErr != nil) != tt.wantErr {
+				t.Errorf("VerifyKeyfunc() error = %v, wantErr %v", gotErr, tt.wantErr)
+			}
+		})
 	}
 }

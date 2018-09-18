@@ -3,7 +3,6 @@ package gcpjwt
 import (
 	"context"
 	"crypto"
-	"crypto/md5"
 	"crypto/x509"
 	"encoding/base64"
 	"encoding/pem"
@@ -14,6 +13,7 @@ import (
 	"google.golang.org/api/cloudkms/v1"
 )
 
+// SigningMethodKMS implements the jwt.SiginingMethod interface for Google's Cloud KMS service
 type SigningMethodKMS struct {
 	alg      string
 	override string
@@ -87,21 +87,22 @@ func init() {
 	})
 }
 
+// Alg will return the JWT header algorithm identifier this method is configured for.
 func (s *SigningMethodKMS) Alg() string {
 	return s.alg
 }
 
-// Override will override the default JWT implementation of the signing function
-// this Cloud KMS type implements.
+// Override will override the default JWT implementation of the signing function this Cloud KMS type implements.
 func (s *SigningMethodKMS) Override() {
+	s.alg = s.override
 	jwt.RegisterSigningMethod(s.override, func() jwt.SigningMethod {
 		return s
 	})
 }
 
-// Sign implements the Sign method from jwt.SigningMethod
-// For this signing method, a valid context.Context must be
-// passed as the key containing a KMSConfig value
+// Sign implements the Sign method from jwt.SigningMethod. For this signing method, a valid context.Context must be
+// passed as the key containing a KMSConfig value.
+// https://cloud.google.com/kms/docs/create-validate-signatures#kms-howto-sign-go
 func (s *SigningMethodKMS) Sign(signingString string, key interface{}) (string, error) {
 	var ctx context.Context
 
@@ -129,11 +130,6 @@ func (s *SigningMethodKMS) Sign(signingString string, key interface{}) (string, 
 		client = c
 	}
 
-	// // Default the ProjectID to a wildcard
-	// if config.ProjectID == "" {
-	// 	config.ProjectID = "-"
-	// }
-
 	// Prep the call
 	kmsService, err := cloudkms.New(client)
 	if err != nil {
@@ -145,8 +141,7 @@ func (s *SigningMethodKMS) Sign(signingString string, key interface{}) (string, 
 	}
 
 	digest := s.hasher.New()
-	digest.Write([]byte(signingString))
-	digestStr := base64.StdEncoding.EncodeToString(digest.Sum(nil))
+	digestStr := base64.StdEncoding.EncodeToString(digest.Sum([]byte(signingString)))
 
 	asymmetricSignRequest := &cloudkms.AsymmetricSignRequest{}
 	switch s.hasher {
@@ -169,10 +164,11 @@ func (s *SigningMethodKMS) Sign(signingString string, key interface{}) (string, 
 // to verify signatures with, caching the public key in memory. It is not valid to modify the KMSConfig provided after
 // calling this function, you must call this again if changes to the config's KeyPath are made. Note that the public key
 // is retrieved when creating the key func and returned for each call to the returned jwt.Keyfunc.
+// https://cloud.google.com/kms/docs/retrieve-public-key#kms-howto-retrieve-public-key-go
 func KMSVerfiyKeyfunc(ctx context.Context, config *KMSConfig) (jwt.Keyfunc, error) {
 	// The Public Key is static for the key version, so grab it now and re-use it as needed
 	var publicKey interface{}
-	keyVersion := fmt.Sprintf("%x", md5.Sum([]byte(config.KeyPath)))
+	keyVersion := config.KeyID()
 	client := config.OAuth2HTTPClient
 	if client == nil {
 		c, err := getDefaultOauthClient(ctx)
@@ -208,7 +204,7 @@ func KMSVerfiyKeyfunc(ctx context.Context, config *KMSConfig) (jwt.Keyfunc, erro
 			return nil, fmt.Errorf("gcpjwt: unexpected signing method: %v", token.Header["alg"])
 		}
 
-		if kid, ok := token.Header["kid"].(string); ok && kid != "" {
+		if kid, ok := token.Header["kid"].(string); ok {
 			if kid != keyVersion {
 				return nil, fmt.Errorf("gcpjwt: unknown kid `%s` found in header", kid)
 			}
@@ -216,13 +212,13 @@ func KMSVerfiyKeyfunc(ctx context.Context, config *KMSConfig) (jwt.Keyfunc, erro
 
 		return publicKey, nil
 	}, nil
-
 }
 
-// Verify does a pass-thru to the appropiate jwt.SigningMethod for this signing algorithm and expects the same key
-// https://firebase.google.com/docs/auth/admin/verify-id-tokens
+// Verify does a pass-thru to the appropriate jwt.SigningMethod for this signing algorithm and expects the same key
+// https://cloud.google.com/kms/docs/create-validate-signatures#validate_ec_signature
+// https://cloud.google.com/kms/docs/create-validate-signatures#validate_rsa_signature
 func (s *SigningMethodKMS) Verify(signingString, signature string, key interface{}) error {
-	return s.Verify(signingString, signature, key)
+	return s.verify(signingString, signature, key)
 }
 
 func signKMS(ctx context.Context, kmsService *cloudkms.Service, config *KMSConfig, request *cloudkms.AsymmetricSignRequest) (string, error) {
