@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
@@ -13,9 +14,11 @@ import (
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
 	gjwt "golang.org/x/oauth2/jwt"
+	"google.golang.org/appengine"
+	"google.golang.org/appengine/aetest"
 
-	"github.com/someone1/gcp-jwt-go"
-	goauth2 "github.com/someone1/gcp-jwt-go/oauth2"
+	"gopkg.in/someone1/gcp-jwt-go.v2"
+	goauth2 "gopkg.in/someone1/gcp-jwt-go.v2/oauth2"
 )
 
 var jwtConfig *gjwt.Config
@@ -37,8 +40,30 @@ func init() {
 	}
 }
 
+func newTestReq(method, urlStr string, body io.Reader) (*http.Request, error) {
+	return httptest.NewRequest(method, urlStr, body), nil
+}
+
 func TestHelpers(t *testing.T) {
 	ctx := context.Background()
+	newReqFunc := newTestReq
+
+	// AppEngine test setup
+	isAppEngine := os.Getenv("APPENGINE_TEST") == "true"
+	if isAppEngine {
+		inst, err := aetest.NewInstance(nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer inst.Close()
+		req, err := inst.NewRequest("GET", "/", nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		ctx = appengine.NewContext(req)
+		newReqFunc = inst.NewRequest
+	}
+
 	config := &gcpjwt.IAMConfig{
 		ServiceAccount: jwtConfig.Email,
 	}
@@ -53,14 +78,14 @@ func TestHelpers(t *testing.T) {
 			out    bool
 		}{
 			{
-				"no type",
+				"NoType",
 				&gcpjwt.IAMConfig{
 					ServiceAccount: jwtConfig.Email,
 				},
 				true,
 			},
 			{
-				"blob type",
+				"BlobType",
 				&gcpjwt.IAMConfig{
 					ServiceAccount: jwtConfig.Email,
 					IAMType:        gcpjwt.IAMBlobType,
@@ -68,7 +93,7 @@ func TestHelpers(t *testing.T) {
 				false,
 			},
 			{
-				"jwt type",
+				"JWTType",
 				&gcpjwt.IAMConfig{
 					ServiceAccount: jwtConfig.Email,
 					IAMType:        gcpjwt.IAMJwtType,
@@ -90,6 +115,14 @@ func TestHelpers(t *testing.T) {
 	})
 
 	t.Run("JWTMiddleware", func(t *testing.T) {
+		invalidAudienceSource, err := goauth2.JWTAccessTokenSource(ctx, &gcpjwt.IAMConfig{
+			ServiceAccount: jwtConfig.Email,
+			IAMType:        gcpjwt.IAMJwtType,
+		}, "https://invalid")
+		if err != nil {
+			t.Errorf("Could not make invalid audience token source: %v", err)
+			return
+		}
 		okHandler := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 			w.Write([]byte("ok"))
 		})
@@ -104,6 +137,12 @@ func TestHelpers(t *testing.T) {
 				"MissingToken",
 				audience,
 				nil,
+				http.StatusForbidden,
+			},
+			{
+				"InvalidAudienceToken",
+				audience,
+				invalidAudienceSource,
 				http.StatusForbidden,
 			},
 			{
@@ -131,7 +170,11 @@ func TestHelpers(t *testing.T) {
 			t.Run(test.name, func(t *testing.T) {
 				w := httptest.NewRecorder()
 				w.Body = bytes.NewBuffer(nil)
-				r := httptest.NewRequest(http.MethodGet, test.url, nil)
+				r, err := newReqFunc(http.MethodGet, test.url, nil)
+				if err != nil {
+					t.Errorf("could not create request: %v", err)
+					return
+				}
 				if test.source != nil {
 					token, err := test.source.Token()
 					if err != nil {
@@ -139,6 +182,7 @@ func TestHelpers(t *testing.T) {
 					}
 					r.Header.Set("Authorization", fmt.Sprintf("Bearer %s", token.AccessToken))
 				}
+
 				handler.ServeHTTP(w, r)
 				if got := w.Result().StatusCode; got != test.want {
 					t.Errorf("expected response code `%d`, got `%d`", test.want, got)

@@ -10,7 +10,7 @@ import (
 	"github.com/dgrijalva/jwt-go"
 	"github.com/dgrijalva/jwt-go/request"
 
-	"github.com/someone1/gcp-jwt-go"
+	"gopkg.in/someone1/gcp-jwt-go.v2"
 )
 
 // NewHandler will return a middleware that will try and validate tokens in incoming HTTP requests.

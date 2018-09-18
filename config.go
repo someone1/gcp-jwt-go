@@ -2,7 +2,7 @@ package gcpjwt
 
 import (
 	"context"
-	"crypto/md5"
+	"crypto/sha1"
 	"errors"
 	"fmt"
 	"net/http"
@@ -84,9 +84,9 @@ type KMSConfig struct {
 	GCPConfig
 }
 
-// KeyID will return the MD5 hash of the configured KeyPath. Helper function for adding the kid header to your token.
+// KeyID will return the SHA1 hash of the configured KeyPath. Helper function for adding the kid header to your token.
 func (k *KMSConfig) KeyID() string {
-	return fmt.Sprintf("%x", md5.Sum([]byte(k.KeyPath)))
+	return fmt.Sprintf("%x", sha1.Sum([]byte(k.KeyPath)))
 }
 
 // NewIAMContext returns a new context.Context that carries a provided IAMConfig value
