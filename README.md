@@ -30,7 +30,7 @@ Basic implementation of using the built-in [App Identity API](https://cloud.goog
 
 ```go
 import (
-    "github.com/someone1/gcp-jwt-go"
+    "gopkg.in/someone1/gcp-jwt-go.v2"
 )
 
 func init() {
@@ -48,7 +48,7 @@ import (
     "context"
 
     "github.com/dgrijalva/jwt-go"
-    "github.com/someone1/gcp-jwt-go"
+    "gopkg.in/someone1/gcp-jwt-go.v2"
 )
 
 func makeToken() string {
@@ -85,7 +85,7 @@ import (
     "strings"
 
     "github.com/dgrijalva/jwt-go"
-    "github.com/someone1/gcp-jwt-go"
+    "gopkg.in/someone1/gcp-jwt-go.v2"
 )
 
 func validateToken(tokenString string) {
@@ -119,7 +119,7 @@ func validateToken(tokenString string) {
 ```go
 import (
     "github.com/dgrijalva/jwt-go"
-    "github.com/someone1/gcp-jwt-go"
+    "gopkg.in/someone1/gcp-jwt-go.v2"
 )
 
 // AppEngine Only Method

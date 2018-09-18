@@ -10,6 +10,8 @@ import (
 	"github.com/dgrijalva/jwt-go"
 	"golang.org/x/oauth2/google"
 	gjwt "golang.org/x/oauth2/jwt"
+	"google.golang.org/appengine"
+	"google.golang.org/appengine/aetest"
 )
 
 var jwtConfig *gjwt.Config
@@ -54,23 +56,59 @@ func init() {
 	}
 }
 
+var (
+	isAppEngine    = os.Getenv("APPENGINE_TEST") == "true"
+	newContextFunc = func() (context.Context, error) {
+		return context.Background(), nil
+	}
+)
+
+func TestMain(m *testing.M) {
+	close := func() {}
+	if isAppEngine {
+		inst, err := aetest.NewInstance(nil)
+		if err != nil {
+			panic(err)
+		}
+		close = func() {
+			inst.Close()
+		}
+		newContextFunc = func() (context.Context, error) {
+			req, err := inst.NewRequest("GET", "/", nil)
+			if err != nil {
+				return nil, err
+			}
+			return appengine.NewContext(req), nil
+		}
+	}
+	result := m.Run()
+	close()
+	os.Exit(result)
+}
+
 func TestIAMInvalidVerify(t *testing.T) {
 	config := &IAMConfig{
 		ServiceAccount: jwtConfig.Email,
 	}
-
-	c := NewIAMContext(context.Background(), config)
+	ctx, err := newContextFunc()
+	if err != nil {
+		t.Errorf("could not get context: %v", err)
+		return
+	}
+	c := NewIAMContext(ctx, config)
 	for _, data := range gcpTestData {
-		parts := strings.Split(data.tokenString, ".")
+		t.Run(data.name, func(t *testing.T) {
+			parts := strings.Split(data.tokenString, ".")
 
-		method := jwt.GetSigningMethod(data.alg)
-		err := method.Verify(strings.Join(parts[0:2], "."), parts[2], c)
-		if data.valid && err != nil {
-			t.Errorf("[%v] Error while verifying key: %v", data.name, err)
-		}
-		if !data.valid && err == nil {
-			t.Errorf("[%v] Invalid key passed validation", data.name)
-		}
+			method := jwt.GetSigningMethod(data.alg)
+			err := method.Verify(strings.Join(parts[0:2], "."), parts[2], c)
+			if data.valid && err != nil {
+				t.Errorf("Error while verifying key: %v", err)
+			}
+			if !data.valid && err == nil {
+				t.Errorf("Invalid key passed validation")
+			}
+		})
 	}
 }
 
@@ -78,15 +116,25 @@ func TestIAMSignAndVerify(t *testing.T) {
 	config := &IAMConfig{
 		ServiceAccount: jwtConfig.Email,
 	}
+	ctx, err := newContextFunc()
+	if err != nil {
+		t.Errorf("could not get context: %v", err)
+		return
+	}
 
-	c := NewIAMContext(context.Background(), config)
+	c := NewIAMContext(ctx, config)
 	for _, data := range gcpTestData {
-		t.Run(data.alg, func(t *testing.T) {
+		t.Run(data.name, func(t *testing.T) {
 			parts := strings.Split(data.tokenString, ".")
 			method := jwt.GetSigningMethod(data.alg)
 			sig, err := method.Sign(strings.Join(parts[0:2], "."), c)
 			if err != nil {
-				t.Errorf("[%v] Error signing token: %v", data.name, err)
+				t.Errorf("Error signing token: %v", err)
+				return
+			}
+
+			if config.KeyID() == "" {
+				t.Errorf("Expected non-emtpy key id after calling sign")
 				return
 			}
 
@@ -95,7 +143,7 @@ func TestIAMSignAndVerify(t *testing.T) {
 				// This returns the entire JWT, not just the signature!
 				token, parts, err = new(jwt.Parser).ParseUnverified(sig, &jwt.MapClaims{})
 				if err != nil {
-					t.Errorf("[%v] Error parsing token: %v", data.name, token)
+					t.Errorf("Error parsing token: %v", token)
 					return
 				}
 				sig = parts[2]
@@ -105,13 +153,13 @@ func TestIAMSignAndVerify(t *testing.T) {
 			keyFunc := IAMVerfiyKeyfunc(c, config)
 			key, err := keyFunc(token)
 			if err != nil {
-				t.Errorf("[%v] Error getting key: %v", data.name, err)
+				t.Errorf("Error getting key: %v", err)
 				return
 			}
 
 			err = method.Verify(strings.Join(parts[0:2], "."), sig, key)
 			if err != nil {
-				t.Errorf("[%v] Error verifying token (with cache): %v", data.name, err)
+				t.Errorf("Error verifying token (with cache): %v", err)
 			}
 		})
 	}
@@ -175,6 +223,11 @@ func TestSigningMethodIAM_Sign(t *testing.T) {
 }
 
 func TestIAMVerfiyKeyfunc(t *testing.T) {
+	ctx, err := newContextFunc()
+	if err != nil {
+		t.Errorf("could not get context: %v", err)
+		return
+	}
 	type args struct {
 		ctx    context.Context
 		config *IAMConfig
@@ -188,7 +241,7 @@ func TestIAMVerfiyKeyfunc(t *testing.T) {
 		{
 			"WrongMethod",
 			args{
-				context.Background(),
+				ctx,
 				&IAMConfig{
 					ServiceAccount: jwtConfig.Email,
 				},
@@ -204,7 +257,7 @@ func TestIAMVerfiyKeyfunc(t *testing.T) {
 		{
 			"IncorrectKid",
 			args{
-				context.Background(),
+				ctx,
 				&IAMConfig{
 					ServiceAccount: jwtConfig.Email,
 				},
