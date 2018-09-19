@@ -1,25 +1,21 @@
 language: go
 sudo: false
-
 go_import_path: gopkg.in/someone1/gcp-jwt-go.v2
-
 go:
   - 1.10.x
   - 1.11.x
-
 addons:
   apt:
     packages:
       - python-rsa
-
 env:
   - GOOGLE_APPLICATION_CREDENTIALS="$GOPATH/src/gopkg.in/someone1/gcp-jwt-go.v2/credentials.json"
-
+    KMS_TEST_KEYS="$GOPATH/src/gopkg.in/someone1/gcp-jwt-go.v2/kms-test-keys.json"
 before_install:
-  - openssl aes-256-cbc -K $encrypted_b9c0b4811a94_key -iv $encrypted_b9c0b4811a94_iv -in credentials.json.enc -out credentials.json -d
+  - openssl aes-256-cbc -K $encrypted_b9c0b4811a94_key -iv $encrypted_b9c0b4811a94_iv -in secrets.tar.enc -out secrets.tar -d
+  - tar xvf secrets.tar
   - go get github.com/mattn/goveralls
   - go get github.com/alecthomas/gometalinter
-
 install:
   - "$GOPATH/bin/gometalinter --install"
   - mkdir /tmp/sdk
@@ -29,10 +25,9 @@ install:
   - export APPENGINE_DEV_APPSERVER=/tmp/sdk/go_appengine/dev_appserver.py
   - go get -v -d -t ./...
   - go get google.golang.org/appengine
-
 script:
   - make test-coverage
   - make test-appengine-coverage
   - cat ae_coverage.out ae2_coverage.out | grep .go >> coverage.out
-  - $GOPATH/bin/goveralls -coverprofile=coverage.out -service=travis-ci
+  - "$GOPATH/bin/goveralls -coverprofile=coverage.out -service=travis-ci"
   - make fmt vet build

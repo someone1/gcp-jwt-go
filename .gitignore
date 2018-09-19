@@ -22,7 +22,6 @@ _testmain.go
 *.exe
 *.test
 *.prof
-coverage.out
-
-# Credentials
-credentials.json
+*.out
+*.json
+*.tar

@@ -4,9 +4,11 @@ import (
 	"context"
 	"crypto"
 	"crypto/x509"
+	"encoding/asn1"
 	"encoding/base64"
 	"encoding/pem"
 	"fmt"
+	"math/big"
 	"net/http"
 
 	"github.com/dgrijalva/jwt-go"
@@ -16,9 +18,8 @@ import (
 // SigningMethodKMS implements the jwt.SiginingMethod interface for Google's Cloud KMS service
 type SigningMethodKMS struct {
 	alg      string
-	override string
+	override jwt.SigningMethod
 	hasher   crypto.Hash
-	verify   func(signingString, signature string, key interface{}) error
 }
 
 // Support for the Google Cloud KMS Asymmetric Signing Algorithms: https://cloud.google.com/kms/docs/algorithms
@@ -45,9 +46,8 @@ func init() {
 	// RS256
 	SigningMethodKMSRS256 = &SigningMethodKMS{
 		"KMSRS256",
-		jwt.SigningMethodRS256.Alg(),
+		jwt.SigningMethodRS256,
 		crypto.SHA256,
-		jwt.SigningMethodRS256.Verify,
 	}
 	jwt.RegisterSigningMethod(SigningMethodKMSRS256.Alg(), func() jwt.SigningMethod {
 		return SigningMethodKMSRS256
@@ -56,9 +56,8 @@ func init() {
 	// PS256
 	SigningMethodKMSPS256 = &SigningMethodKMS{
 		"KMSPS256",
-		jwt.SigningMethodPS256.Alg(),
+		jwt.SigningMethodPS256,
 		crypto.SHA256,
-		jwt.SigningMethodPS256.Verify,
 	}
 	jwt.RegisterSigningMethod(SigningMethodKMSPS256.Alg(), func() jwt.SigningMethod {
 		return SigningMethodKMSPS256
@@ -67,9 +66,8 @@ func init() {
 	// ES256
 	SigningMethodKMSES256 = &SigningMethodKMS{
 		"KMSES256",
-		jwt.SigningMethodES256.Alg(),
+		jwt.SigningMethodES256,
 		crypto.SHA256,
-		jwt.SigningMethodES256.Verify,
 	}
 	jwt.RegisterSigningMethod(SigningMethodKMSES256.Alg(), func() jwt.SigningMethod {
 		return SigningMethodKMSES256
@@ -78,9 +76,8 @@ func init() {
 	// ES384
 	SigningMethodKMSES384 = &SigningMethodKMS{
 		"KMSES384",
-		jwt.SigningMethodES384.Alg(),
+		jwt.SigningMethodES384,
 		crypto.SHA384,
-		jwt.SigningMethodES384.Verify,
 	}
 	jwt.RegisterSigningMethod(SigningMethodKMSES384.Alg(), func() jwt.SigningMethod {
 		return SigningMethodKMSES384
@@ -94,8 +91,8 @@ func (s *SigningMethodKMS) Alg() string {
 
 // Override will override the default JWT implementation of the signing function this Cloud KMS type implements.
 func (s *SigningMethodKMS) Override() {
-	s.alg = s.override
-	jwt.RegisterSigningMethod(s.override, func() jwt.SigningMethod {
+	s.alg = s.override.Alg()
+	jwt.RegisterSigningMethod(s.alg, func() jwt.SigningMethod {
 		return s
 	})
 }
@@ -120,28 +117,13 @@ func (s *SigningMethodKMS) Sign(signingString string, key interface{}) (string, 
 		return "", ErrMissingConfig
 	}
 
-	// Default config.OAuth2HTTPClient is a google.DefaultClient
-	client := config.OAuth2HTTPClient
-	if client == nil {
-		c, err := getDefaultOauthClient(ctx)
-		if err != nil {
-			return "", err
-		}
-		client = c
-	}
-
-	// Prep the call
-	kmsService, err := cloudkms.New(client)
-	if err != nil {
-		return "", err
-	}
-
 	if !s.hasher.Available() {
 		return "", jwt.ErrHashUnavailable
 	}
 
 	digest := s.hasher.New()
-	digestStr := base64.StdEncoding.EncodeToString(digest.Sum([]byte(signingString)))
+	digest.Write([]byte(signingString))
+	digestStr := base64.StdEncoding.EncodeToString(digest.Sum(nil))
 
 	asymmetricSignRequest := &cloudkms.AsymmetricSignRequest{}
 	switch s.hasher {
@@ -156,8 +138,15 @@ func (s *SigningMethodKMS) Sign(signingString string, key interface{}) (string, 
 		}
 	}
 
+	// ECDSA Signatures from Cloud KMS come ASN1 encoded, which isn't to spec
+	// https://tools.ietf.org/html/rfc7518#section-3.4
+	var ecdsaMethod *jwt.SigningMethodECDSA
+	if method, ok := s.override.(*jwt.SigningMethodECDSA); ok {
+		ecdsaMethod = method
+	}
+
 	// Do the call
-	return signKMS(ctx, kmsService, config, asymmetricSignRequest)
+	return signKMS(ctx, config, asymmetricSignRequest, ecdsaMethod)
 }
 
 // KMSVerfiyKeyfunc is a helper meant that returns a jwt.Keyfunc. It will handle pulling and selecting the certificates
@@ -193,6 +182,9 @@ func KMSVerfiyKeyfunc(ctx context.Context, config *KMSConfig) (jwt.Keyfunc, erro
 
 	keyBytes := []byte(response.Pem)
 	block, _ := pem.Decode(keyBytes)
+	if block == nil {
+		return nil, fmt.Errorf("gcpjwt: could not parse certificate from response")
+	}
 	publicKey, err = x509.ParsePKIXPublicKey(block.Bytes)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse public key: %+v", err)
@@ -218,10 +210,26 @@ func KMSVerfiyKeyfunc(ctx context.Context, config *KMSConfig) (jwt.Keyfunc, erro
 // https://cloud.google.com/kms/docs/create-validate-signatures#validate_ec_signature
 // https://cloud.google.com/kms/docs/create-validate-signatures#validate_rsa_signature
 func (s *SigningMethodKMS) Verify(signingString, signature string, key interface{}) error {
-	return s.verify(signingString, signature, key)
+	return s.override.Verify(signingString, signature, key)
 }
 
-func signKMS(ctx context.Context, kmsService *cloudkms.Service, config *KMSConfig, request *cloudkms.AsymmetricSignRequest) (string, error) {
+func signKMS(ctx context.Context, config *KMSConfig, request *cloudkms.AsymmetricSignRequest, ecdsaMethod *jwt.SigningMethodECDSA) (string, error) {
+	// Default config.OAuth2HTTPClient is a google.DefaultClient
+	client := config.OAuth2HTTPClient
+	if client == nil {
+		c, err := getDefaultOauthClient(ctx)
+		if err != nil {
+			return "", err
+		}
+		client = c
+	}
+
+	// Prep the service
+	kmsService, err := cloudkms.New(client)
+	if err != nil {
+		return "", err
+	}
+
 	// Do the call
 	signResp, err := kmsService.Projects.Locations.KeyRings.CryptoKeys.CryptoKeyVersions.AsymmetricSign(config.KeyPath, request).Context(ctx).Do()
 	if err != nil {
@@ -233,5 +241,35 @@ func signKMS(ctx context.Context, kmsService *cloudkms.Service, config *KMSConfi
 		return "", fmt.Errorf("gcpjwt: expected response code `%d` from signing request, got `%d`", http.StatusOK, signResp.HTTPStatusCode)
 	}
 
-	return signResp.Signature, nil
+	// Decode the response
+	decodedSignature, err := base64.StdEncoding.DecodeString(signResp.Signature)
+	if err != nil {
+		return "", err
+	}
+
+	// If this was signed with the ECDSA algorithm, update the signature to keep it in spec
+	if ecdsaMethod != nil {
+		var parsedSig struct{ R, S *big.Int }
+		_, err = asn1.Unmarshal(decodedSignature, &parsedSig)
+		if err != nil {
+			return "", fmt.Errorf("gcpjwt: failed to parse ecdsa signature bytes: %+v", err)
+		}
+
+		keyBytes := ecdsaMethod.CurveBits / 8
+		if ecdsaMethod.CurveBits%8 > 0 {
+			keyBytes++
+		}
+
+		rBytes := parsedSig.R.Bytes()
+		rBytesPadded := make([]byte, keyBytes)
+		copy(rBytesPadded[keyBytes-len(rBytes):], rBytes)
+
+		sBytes := parsedSig.S.Bytes()
+		sBytesPadded := make([]byte, keyBytes)
+		copy(sBytesPadded[keyBytes-len(sBytes):], sBytes)
+
+		decodedSignature = append(rBytesPadded, sBytesPadded...)
+	}
+
+	return jwt.EncodeSegment(decodedSignature), nil
 }
