@@ -11,6 +11,10 @@ Google Cloud KMS [now supports signatures](https://cloud.google.com/kms/docs/cre
 - Package name changed from gcp_jwt to gcpjwt
 - Refactoring of code (including exported functions/structs)
 - Certificate caching is now opt-in vs opt-out
+- Helper jwt.Keyfunc implementations introduced
+- Expected key for sign/verify changed
+- KeyID() helper functions
+- Basic oauth2.TokenSource and http middleware sub packages for basic service-to-service authentication (currently only supports IAM Api)
 
 To continue using the older version, please import as follows: `import "gopkg.in/someone1/gcp-jwt-go.v1"`
 
@@ -21,6 +25,51 @@ gcp-jwt-go has basic implementations of using [Google Cloud KMS](https://cloud.g
 ## Getting Started
 
 Please read the documentation at [https://godoc.org/github.com/someone1/gcp-jwt-go](https://godoc.org/github.com/someone1/gcp-jwt-go)
+
+## Performance
+
+There are many tradeoffs which the various signing mechanism available from Google's Cloud Platform. Below you will find a chart of performance for the different algorithms and APIs. Here are some overall takeaways:
+
+- **AppEngine:** The fastest option available though limited in that it can only sign on behalf of the default service account and only runs on AppEngine Standard. Keys are auto-rotated, limited to RS256.
+- **IAM Api:** Flexible in that you can sign on behalf of various service accounts (see Tips below), runs on any platform, keys are auto-rotated, but is the slowest option available and limited to RS256.
+- **Cloud KMS:** Fast (_enough?_), highly flexible (come up with your own keys/usage/algorithm/etc.), runs on any platform, however key rotation is left to the user.
+
+_**note:** all latency numbers are ordered as (50th %ile, 95th %ile, 99th %ile). Tests were run on a F1 AppEngine Standard instance in the us-central region. All Cloud KMS keys are set to global._
+
+#### Signing Performance
+
+| Signer          | Signature Length | Sign Latency                    | Samples |
+| --------------- | ---------------- | ------------------------------- | ------- |
+| AppEngine       | 342              | 9.14 ms, 17.56 ms, 79.15 ms     | 100     |
+| IAMBlob         | 342              | 198.37 ms, 217.42 ms, 244.91 ms | 100     |
+| IAMJWT          | 342              | 109.03 ms, 208.46 ms, 212.65 ms | 100     |
+| KMSES256        | 86               | 31.57 ms, 44.09 ms, 44.54 ms    | 50      |
+| KMSES384        | 128              | 34.67 ms, 51.16 ms, 59.48 ms    | 50      |
+| KMSPS256 (2048) | 342              | 38.20 ms, 57.75 ms, 70.47 ms    | 50      |
+| KMSPS256 (3072) | 512              | 42.77 ms, 58.24 ms, 62.86 ms    | 50      |
+| KMSPS256 (4096) | 683              | 52.02 ms, 64.70 ms, 92.15 ms    | 50      |
+| KMSRS256 (2048) | 342              | 37.94 ms, 61.94 ms, 77.33 ms    | 50      |
+| KMSRS256 (3072) | 512              | 39.85 ms, 50.52 ms, 56.17 ms    | 50      |
+| KMSRS256 (4096) | 683              | 50.19 ms, 68.48 ms, 86.02 ms    | 50      |
+
+#### Verify Performance
+
+| Verifier               | Cache    | Verify Latency                  | Samples |
+| ---------------------- | -------- | ------------------------------- | ------- |
+| AppEngineVerify        | false    | 6.42 ms, 9.33 ms, 10.86 ms      | 50      |
+| AppEngineVerify        | true     | 0.87 ms, 1.05 ms, 25.03 ms      | 50      |
+| IAMVerify              | false    | 12.52 ms, 21.45 ms, 30.63 ms    | 100     |
+| IAMVerify              | true     | 0.86 ms, 1.01 ms, 53.19 ms      | 100     |
+| KMSVerify (2048-PS256) | _always_ | 0.88 ms, 1.01 ms, 32.15 ms      | 50      |
+| KMSVerify (2048-RS256) | _always_ | 0.93 ms, 1.11 ms, 19.96 ms      | 50      |
+| KMSVerify (3072-PS256) | _always_ | 1.53 ms, 1.71 ms, 43.35 ms      | 50      |
+| KMSVerify (3072-RS256) | _always_ | 1.61 ms, 2.11 ms, 42.39 ms      | 50      |
+| KMSVerify (4096-PS256) | _always_ | 2.94 ms, 66.88 ms, 71.60 ms     | 50      |
+| KMSVerify (4096-RS256) | _always_ | 2.70 ms, 55.25 ms, 72.34 ms     | 50      |
+| KMSVerify (ES256)      | _always_ | 0.15 ms, 0.20 ms, 0.29 ms       | 50      |
+| KMSVerify (ES384)      | _always_ | 181.21 ms, 193.25 ms, 195.08 ms | 50      |
+
+_Where cache=false is where we get the most value from these numbers as it shows the time to fetch/parse public certificates, the other cases are just the time to use a cached certificate to validate the JWT._
 
 ## Tips
 
