@@ -3,6 +3,7 @@ package gcpjwt
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"strings"
@@ -18,22 +19,44 @@ type testKey struct {
 	KeyID   string `json:"key_id"`
 }
 
-func TestKMSSignAndVerify(t *testing.T) {
-	testKeysPath := os.Getenv("KMS_TEST_KEYS")
-	if testKeysPath == "" {
-		t.Skip("KMS_TEST_KEYS environmental variable required for this test to run!")
-		return
+func readKeys() ([]testKey, error) {
+	path := os.Getenv("KMS_TEST_KEYS")
+	if path == "" {
+		return nil, fmt.Errorf("environmental variable KMS_TEST_KEYS missing")
 	}
 
-	b, err := ioutil.ReadFile(testKeysPath)
+	b, err := ioutil.ReadFile(path)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 
 	testKeys := make([]testKey, 0)
 	err = json.Unmarshal(b, &testKeys)
 	if err != nil {
-		t.Errorf("Could not unmarshal test keys: %v", err)
+		return nil, err
+	}
+
+	return testKeys, err
+}
+
+func algToMethod(alg string) jwt.SigningMethod {
+	switch alg {
+	case "RS256":
+		return SigningMethodKMSRS256
+	case "PS256":
+		return SigningMethodKMSPS256
+	case "ES256":
+		return SigningMethodKMSES256
+	case "ES384":
+		return SigningMethodKMSES384
+	}
+	return nil
+}
+
+func TestKMSSignAndVerify(t *testing.T) {
+	testKeys, err := readKeys()
+	if err != nil {
+		t.Errorf("could not read keys: %v", err)
 		return
 	}
 
@@ -58,19 +81,9 @@ func TestKMSSignAndVerify(t *testing.T) {
 				return
 			}
 			newCtx := NewKMSContext(ctx, config)
-			var method jwt.SigningMethod
-			switch tt.Alg {
-			case "RS256":
-				method = SigningMethodKMSRS256
-			case "PS256":
-				method = SigningMethodKMSPS256
-			case "ES256":
-				method = SigningMethodKMSES256
-			case "ES384":
-				method = SigningMethodKMSES384
-			default:
+			method := algToMethod(tt.Alg)
+			if method == nil {
 				t.Errorf("Uknown alg = %s", tt.Alg)
-				return
 			}
 
 			testTokens := []struct {

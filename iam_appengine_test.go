@@ -170,7 +170,7 @@ func TestAppEngineSignAndVerify(t *testing.T) {
 			}
 
 			if SigningMethodAppEngine.KeyID() == "" {
-				t.Errorf("Expected non-emtpy key id after calling sign")
+				t.Errorf("Expected non-empty key id after calling sign")
 				return
 			}
 

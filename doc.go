@@ -1,11 +1,10 @@
 /*
-Package gcp-jwt-go has basic implementations of using Google Cloud KMS, Google IAM API (both signJwt and signBlob),
-and the App Identity API from AppEngine Standard to sign JWT tokens using the package
-"github.com/dgrijalva/jwt-go". Should work across virtually all environments, on or off of Google's Cloud Platform.
+Package gcpjwt has Google Cloud Platform (Cloud KMS, IAM API, & AppEngine App Identity API) jwt-go implementations.
+Should work across virtually all environments, on or off of Google's Cloud Platform.
 
 Getting Started
 
-It is highly reccomended that you override the default algorithm implementations that you want to leverage a GCP service
+It is highly recommended that you override the default algorithm implementations that you want to leverage a GCP service
 for in dgrijalva/jwt-go. You otherwise will have to manually pick the verification method for your JWTs and they will
 place non-standard headers in the rendered JWT (with the exception of signJwt from the IAM API which overwrites the
 header with its own).
@@ -60,7 +59,7 @@ Example:
 	)
 
 	func makeToken(ctx context.Context) (string, error) string {
-		// Important - if on AppEngine standard, even if you aren't useing the SigningMethodAppEngine signing method
+		// Important - if on AppEngine standard, even if you aren't using the SigningMethodAppEngine signing method
 		// you must pass around the appengine.NewContext context as it is required for the API calls all methods must
 		// make.
 
@@ -124,7 +123,7 @@ Example:
 	)
 
 	func validateToken(ctx context.Context, tokenString string) (*jwt.Token, error) {
-		// Important - if on AppEngine standard, even if you aren't useing the SigningMethodAppEngine signing method
+		// Important - if on AppEngine standard, even if you aren't using the SigningMethodAppEngine signing method
 		// you must pass around the appengine.NewContext context as it is required for the API calls all methods must
 		// make.
 

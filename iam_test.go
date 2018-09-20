@@ -134,7 +134,7 @@ func TestIAMSignAndVerify(t *testing.T) {
 			}
 
 			if config.KeyID() == "" {
-				t.Errorf("Expected non-emtpy key id after calling sign")
+				t.Errorf("Expected non-empty key id after calling sign")
 				return
 			}
 
