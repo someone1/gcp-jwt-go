@@ -11,7 +11,7 @@ import (
 	"github.com/dgrijalva/jwt-go"
 	"golang.org/x/oauth2"
 
-	"gopkg.in/someone1/gcp-jwt-go.v2"
+	"github.com/someone1/gcp-jwt-go"
 )
 
 // JWTAccessTokenSource returns a TokenSource that uses the IAM API to sign tokens.
@@ -21,7 +21,7 @@ import (
 // The audience is typically a URL that specifies the scope of the credentials or the
 // API endpoint.
 //
-// Complimentary to https://gopkg.in/someone1/gcp-jwt-go.v2/jwtmiddleware
+// Complimentary to https://github.com/someone1/gcp-jwt-go/jwtmiddleware
 func JWTAccessTokenSource(ctx context.Context, config *gcpjwt.IAMConfig, audience string) (oauth2.TokenSource, error) {
 	ctx = gcpjwt.NewIAMContext(ctx, config)
 	ts := &jwtAccessTokenSource{
