@@ -1,6 +1,5 @@
 language: go
 sudo: false
-go_import_path: gopkg.in/someone1/gcp-jwt-go.v2
 go:
   - 1.10.x
   - 1.11.x
@@ -9,8 +8,8 @@ addons:
     packages:
       - python-rsa
 env:
-  - GOOGLE_APPLICATION_CREDENTIALS="$GOPATH/src/gopkg.in/someone1/gcp-jwt-go.v2/credentials.json"
-    KMS_TEST_KEYS="$GOPATH/src/gopkg.in/someone1/gcp-jwt-go.v2/kms-test-keys.json"
+  - GOOGLE_APPLICATION_CREDENTIALS="$GOPATH/src/github.com/someone1/gcp-jwt-go/credentials.json"
+    KMS_TEST_KEYS="$GOPATH/src/github.com/someone1/gcp-jwt-go/kms-test-keys.json"
 before_install:
   - openssl aes-256-cbc -K $encrypted_b9c0b4811a94_key -iv $encrypted_b9c0b4811a94_iv -in secrets.tar.enc -out secrets.tar -d
   - tar xvf secrets.tar

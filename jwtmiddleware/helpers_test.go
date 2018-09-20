@@ -17,8 +17,8 @@ import (
 	"google.golang.org/appengine"
 	"google.golang.org/appengine/aetest"
 
-	"gopkg.in/someone1/gcp-jwt-go.v2"
-	goauth2 "gopkg.in/someone1/gcp-jwt-go.v2/oauth2"
+	"github.com/someone1/gcp-jwt-go"
+	goauth2 "github.com/someone1/gcp-jwt-go/oauth2"
 )
 
 var jwtConfig *gjwt.Config

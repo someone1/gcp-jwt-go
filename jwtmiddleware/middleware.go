@@ -10,7 +10,7 @@ import (
 	"github.com/dgrijalva/jwt-go"
 	"github.com/dgrijalva/jwt-go/request"
 
-	"gopkg.in/someone1/gcp-jwt-go.v2"
+	"github.com/someone1/gcp-jwt-go"
 )
 
 // NewHandler will return a middleware that will try and validate tokens in incoming HTTP requests.
@@ -19,7 +19,7 @@ import (
 // Audience claim to the one provided, or use https:// + request.Host if blank. NOTE: If using the signJwt method,
 // you MUST call gcpjwt.SigningMethodIAMJWT.Override().
 //
-// Complimentary to https://gopkg.in/someone1/gcp-jwt-go.v2/oauth2
+// Complimentary to https://github.com/someone1/gcp-jwt-go/oauth2
 func NewHandler(ctx context.Context, config *gcpjwt.IAMConfig, audience string) func(http.Handler) http.Handler {
 	ctx = gcpjwt.NewIAMContext(ctx, config)
 

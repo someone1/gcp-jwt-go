@@ -11,7 +11,7 @@ import (
 	"github.com/dgrijalva/jwt-go/request"
 	"google.golang.org/appengine"
 
-	"gopkg.in/someone1/gcp-jwt-go.v2"
+	"github.com/someone1/gcp-jwt-go"
 )
 
 // NewHandler will return a middleware that will try and validate tokens in incoming HTTP requests.
@@ -19,7 +19,7 @@ import (
 // claim equal to the ServiceAccount the provided IAMConfig is configured for. This will also validate the
 // Audience claim to the one provided, or use https:// + request.Host if blank.
 //
-// Complimentary to https://gopkg.in/someone1/gcp-jwt-go.v2/oauth2
+// Complimentary to https://github.com/someone1/gcp-jwt-go/oauth2
 func NewHandler(_ context.Context, config *gcpjwt.IAMConfig, audience string) func(http.Handler) http.Handler {
 	return func(h http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
