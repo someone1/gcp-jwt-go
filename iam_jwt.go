@@ -3,7 +3,6 @@ package gcpjwt
 import (
 	"context"
 	"fmt"
-	"net/http"
 	"strings"
 
 	"github.com/dgrijalva/jwt-go"
@@ -46,11 +45,6 @@ func signJwt(ctx context.Context, iamService *iam.Service, config *IAMConfig, si
 	signResp, err := iamService.Projects.ServiceAccounts.SignJwt(name, signReq).Context(ctx).Do()
 	if err != nil {
 		return "", err
-	}
-
-	// Check the response
-	if signResp.HTTPStatusCode != http.StatusOK {
-		return "", fmt.Errorf("gcpjwt: expected response code `%d` from signing request, got `%d`", http.StatusOK, signResp.HTTPStatusCode)
 	}
 
 	config.lastKeyID = signResp.KeyId

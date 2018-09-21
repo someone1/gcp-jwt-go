@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
-	"net/http"
 
 	"github.com/dgrijalva/jwt-go"
 	"google.golang.org/api/iam/v1"
@@ -38,11 +37,6 @@ func signBlob(ctx context.Context, iamService *iam.Service, config *IAMConfig, s
 	signResp, err := iamService.Projects.ServiceAccounts.SignBlob(name, signReq).Context(ctx).Do()
 	if err != nil {
 		return "", err
-	}
-
-	// Check the response
-	if signResp.HTTPStatusCode != http.StatusOK {
-		return "", fmt.Errorf("unexpected response code from signing request, expected %d but got %d instead", http.StatusOK, signResp.HTTPStatusCode)
 	}
 
 	config.lastKeyID = signResp.KeyId

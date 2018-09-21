@@ -9,7 +9,6 @@ import (
 	"encoding/pem"
 	"fmt"
 	"math/big"
-	"net/http"
 
 	"github.com/dgrijalva/jwt-go"
 	"google.golang.org/api/cloudkms/v1"
@@ -181,10 +180,6 @@ func KMSVerfiyKeyfunc(ctx context.Context, config *KMSConfig) (jwt.Keyfunc, erro
 		return nil, err
 	}
 
-	if response.HTTPStatusCode != http.StatusOK {
-		return nil, fmt.Errorf("gcpjwt: expected response code `%d` from signing request, got `%d`", http.StatusOK, response.HTTPStatusCode)
-	}
-
 	keyBytes := []byte(response.Pem)
 	block, _ := pem.Decode(keyBytes)
 	if block == nil {
@@ -239,11 +234,6 @@ func signKMS(ctx context.Context, config *KMSConfig, request *cloudkms.Asymmetri
 	signResp, err := kmsService.Projects.Locations.KeyRings.CryptoKeys.CryptoKeyVersions.AsymmetricSign(config.KeyPath, request).Context(ctx).Do()
 	if err != nil {
 		return "", err
-	}
-
-	// Check the response
-	if signResp.HTTPStatusCode != http.StatusOK {
-		return "", fmt.Errorf("gcpjwt: expected response code `%d` from signing request, got `%d`", http.StatusOK, signResp.HTTPStatusCode)
 	}
 
 	// Decode the response
