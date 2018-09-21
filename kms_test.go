@@ -279,3 +279,77 @@ func TestSigningMethodKMS_Hash(t *testing.T) {
 		})
 	}
 }
+
+func TestKMSVerfiyKeyfunc(t *testing.T) {
+	ctx, err := newContextFunc()
+	if err != nil {
+		t.Errorf("could not get context: %v", err)
+		return
+	}
+	testKeys, err := readKeys()
+	if err != nil {
+		t.Errorf("could not read keys: %v", err)
+		return
+	}
+	if len(testKeys) < 1 {
+		t.Errorf("no keys to test with")
+		return
+	}
+	type args struct {
+		ctx    context.Context
+		config *KMSConfig
+		token  *jwt.Token
+	}
+	tests := []struct {
+		name           string
+		args           args
+		wantKeyFuncErr bool
+		wantErr        bool
+	}{
+		{
+			"WrongMethod",
+			args{
+				ctx,
+				&KMSConfig{
+					KeyPath: testKeys[0].KeyPath,
+				},
+				&jwt.Token{
+					Method: jwt.SigningMethodPS256,
+					Header: map[string]interface{}{
+						"alg": "PS256",
+					},
+				},
+			},
+			false,
+			true,
+		},
+		{
+			"InvalidKeyPath",
+			args{
+				ctx,
+				&KMSConfig{
+					KeyPath: "invalid",
+				},
+				&jwt.Token{
+					Method: SigningMethodKMSES256,
+					Header: map[string]interface{}{
+						"alg": SigningMethodKMSES256.Alg(),
+					},
+				},
+			},
+			true,
+			true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if keyFunc, gotErr := KMSVerfiyKeyfunc(tt.args.ctx, tt.args.config); (gotErr != nil) != tt.wantKeyFuncErr {
+				t.Errorf("VerifyKeyfunc() error = %v, wantErr %v", gotErr, tt.wantKeyFuncErr)
+			} else if gotErr == nil {
+				if _, gotErr = keyFunc(tt.args.token); (gotErr != nil) != tt.wantErr {
+					t.Errorf("VerifyKeyfunc().Keyfunc() error = %v, wantErr %v", gotErr, tt.wantErr)
+				}
+			}
+		})
+	}
+}

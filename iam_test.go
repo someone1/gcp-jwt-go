@@ -185,14 +185,21 @@ func TestSigningMethodIAM_Override(t *testing.T) {
 }
 
 func TestSigningMethodIAM_Sign(t *testing.T) {
+	ctx, err := newContextFunc()
+	if err != nil {
+		t.Errorf("could not get context: %v", err)
+		return
+	}
 	type args struct {
 		signingString string
 		key           interface{}
 	}
 	tests := []struct {
-		name    string
-		args    args
-		wantErr error
+		name       string
+		args       args
+		method     *SigningMethodIAM
+		wantErr    bool
+		compareErr error
 	}{
 		{
 			"InvalidKey",
@@ -200,6 +207,8 @@ func TestSigningMethodIAM_Sign(t *testing.T) {
 				"",
 				"",
 			},
+			SigningMethodIAMJWT,
+			true,
 			jwt.ErrInvalidKey,
 		},
 		{
@@ -208,14 +217,35 @@ func TestSigningMethodIAM_Sign(t *testing.T) {
 				"",
 				context.Background(),
 			},
+			SigningMethodIAMJWT,
+			true,
 			ErrMissingConfig,
+		},
+		{
+			"InvalidServiceAccountJWT",
+			args{
+				"eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJmb28iOiJiYXIifQ",
+				NewIAMContext(ctx, &IAMConfig{ServiceAccount: "invalid"}),
+			},
+			SigningMethodIAMJWT,
+			true,
+			nil,
+		},
+		{
+			"InvalidServiceAccountBlob",
+			args{
+				"eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJmb28iOiJiYXIifQ",
+				NewIAMContext(ctx, &IAMConfig{ServiceAccount: "invalid"}),
+			},
+			SigningMethodIAMBlob,
+			true,
+			nil,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			_, err := SigningMethodIAMJWT.Sign(tt.args.signingString, tt.args.key)
-			if err != tt.wantErr {
-				t.Errorf("SigningMethodIAM.Sign() error = %v, wantErr %v", err, tt.wantErr)
+			if _, gotErr := tt.method.Sign(tt.args.signingString, tt.args.key); (gotErr != nil) != tt.wantErr || (tt.compareErr != nil && tt.compareErr != gotErr) {
+				t.Errorf("%T.Sign() error = %v, wantErr %v, compareErr %v", tt.method, gotErr, tt.wantErr, tt.compareErr)
 				return
 			}
 		})
@@ -260,6 +290,23 @@ func TestIAMVerfiyKeyfunc(t *testing.T) {
 				ctx,
 				&IAMConfig{
 					ServiceAccount: jwtConfig.Email,
+				},
+				&jwt.Token{
+					Method: SigningMethodIAMJWT,
+					Header: map[string]interface{}{
+						"alg": SigningMethodIAMJWT.Alg(),
+						"kid": "invalid",
+					},
+				},
+			},
+			true,
+		},
+		{
+			"InvalidServiceAccount",
+			args{
+				ctx,
+				&IAMConfig{
+					ServiceAccount: "invalid",
 				},
 				&jwt.Token{
 					Method: SigningMethodIAMJWT,
