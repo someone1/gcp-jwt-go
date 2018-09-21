@@ -97,6 +97,11 @@ func (s *SigningMethodKMS) Override() {
 	})
 }
 
+// Hash will return the crypto.Hash used for this signing method
+func (s *SigningMethodKMS) Hash() crypto.Hash {
+	return s.hasher
+}
+
 // Sign implements the Sign method from jwt.SigningMethod. For this signing method, a valid context.Context must be
 // passed as the key containing a KMSConfig value.
 // https://cloud.google.com/kms/docs/create-validate-signatures#kms-howto-sign-go

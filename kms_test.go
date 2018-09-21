@@ -2,6 +2,7 @@ package gcpjwt
 
 import (
 	"context"
+	"crypto"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -239,6 +240,41 @@ func TestSigningMethodKMS_Sign(t *testing.T) {
 			if err != tt.wantErr {
 				t.Errorf("SigningMethodKMS.Sign() error = %v, wantErr %v", err, tt.wantErr)
 				return
+			}
+		})
+	}
+}
+
+func TestSigningMethodKMS_Hash(t *testing.T) {
+	type fields struct {
+		alg      string
+		override jwt.SigningMethod
+		hasher   crypto.Hash
+	}
+	tests := []struct {
+		name   string
+		fields fields
+		want   crypto.Hash
+	}{
+		{
+			"SimpleTest",
+			fields{
+				"RS256",
+				jwt.SigningMethodRS256,
+				jwt.SigningMethodRS256.Hash,
+			},
+			jwt.SigningMethodRS256.Hash,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			s := &SigningMethodKMS{
+				alg:      tt.fields.alg,
+				override: tt.fields.override,
+				hasher:   tt.fields.hasher,
+			}
+			if got := s.Hash(); got != tt.want {
+				t.Errorf("SigningMethodKMS.Hash() = %v, want %v", got, tt.want)
 			}
 		})
 	}
