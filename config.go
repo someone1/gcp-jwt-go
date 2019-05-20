@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"time"
 
+	kms "cloud.google.com/go/kms/apiv1"
 	"golang.org/x/oauth2/google"
 	"google.golang.org/api/iam/v1"
 )
@@ -31,17 +32,6 @@ var (
 type iamConfigKey struct{}
 type kmsConfigKey struct{}
 
-// GCPConfig common config elements between signing methods - not to be used on its own
-type GCPConfig struct {
-	// OAuth2HTTPClient is a user provided oauth2 authenticated *http.Client to use, google.DefaultClient used otherwise
-	// Used for signing requests
-	OAuth2HTTPClient *http.Client
-
-	// Client is a user provided *http.Client to use, http.DefaultClient is used otherwise (AppEngine URL Fetch Supported)
-	// Used for verify requests
-	Client *http.Client
-}
-
 // IAMConfig is relevant for both the signBlob and signJWT IAM API use-cases
 type IAMConfig struct {
 	// ProjectID is the project id that contains the service account you want to sign with. Defaults to "-" to infer the project from the account
@@ -63,9 +53,15 @@ type IAMConfig struct {
 	// Used for the jwtmiddleware and oauth2 packages.
 	IAMType iamType
 
-	lastKeyID string
+	// OAuth2HTTPClient is a user provided oauth2 authenticated *http.Client to use, google.DefaultClient used otherwise
+	// Used for signing requests
+	OAuth2HTTPClient *http.Client
 
-	GCPConfig
+	// Client is a user provided *http.Client to use, http.DefaultClient is used otherwise (AppEngine URL Fetch Supported)
+	// Used for verify requests
+	Client *http.Client
+
+	lastKeyID string
 }
 
 // KeyID will return the last used KeyID to sign the JWT - though it should be noted the signJwt method will always
@@ -81,7 +77,8 @@ type KMSConfig struct {
 	// "name=projects/*/locations/*/keyRings/*/cryptoKeys/*/cryptoKeyVersions/*"
 	KeyPath string
 
-	GCPConfig
+	// KMSClient to use for calls to the API. If nil, a standard one will be initiated
+	KMSClient *kms.KeyManagementClient
 }
 
 // KeyID will return the SHA1 hash of the configured KeyPath. Helper function for adding the kid header to your token.

@@ -5,13 +5,13 @@ import (
 	"crypto"
 	"crypto/x509"
 	"encoding/asn1"
-	"encoding/base64"
 	"encoding/pem"
 	"fmt"
 	"math/big"
 
+	kms "cloud.google.com/go/kms/apiv1"
 	"github.com/dgrijalva/jwt-go"
-	"google.golang.org/api/cloudkms/v1"
+	kmspb "google.golang.org/genproto/googleapis/cloud/kms/v1"
 )
 
 // SigningMethodKMS implements the jwt.SiginingMethod interface for Google's Cloud KMS service
@@ -127,18 +127,21 @@ func (s *SigningMethodKMS) Sign(signingString string, key interface{}) (string, 
 
 	digest := s.hasher.New()
 	digest.Write([]byte(signingString))
-	digestStr := base64.StdEncoding.EncodeToString(digest.Sum(nil))
 
-	asymmetricSignRequest := &cloudkms.AsymmetricSignRequest{}
+	asymmetricSignRequest := &kmspb.AsymmetricSignRequest{}
 	switch s.hasher {
 	case crypto.SHA256:
-		asymmetricSignRequest.Digest = &cloudkms.Digest{
-			Sha256: digestStr,
+		asymmetricSignRequest.Digest = &kmspb.Digest{
+			Digest: &kmspb.Digest_Sha256{
+				Sha256: digest.Sum(nil),
+			},
 		}
 
 	case crypto.SHA384:
-		asymmetricSignRequest.Digest = &cloudkms.Digest{
-			Sha384: digestStr,
+		asymmetricSignRequest.Digest = &kmspb.Digest{
+			Digest: &kmspb.Digest_Sha384{
+				Sha384: digest.Sum(nil),
+			},
 		}
 	}
 
@@ -162,20 +165,16 @@ func KMSVerfiyKeyfunc(ctx context.Context, config *KMSConfig) (jwt.Keyfunc, erro
 	// The Public Key is static for the key version, so grab it now and re-use it as needed
 	var publicKey interface{}
 	keyVersion := config.KeyID()
-	client := config.OAuth2HTTPClient
+	client := config.KMSClient
 	if client == nil {
-		c, err := getDefaultOauthClient(ctx)
+		c, err := kms.NewKeyManagementClient(ctx)
 		if err != nil {
 			return nil, err
 		}
 		client = c
 	}
 
-	kmsService, err := cloudkms.New(client)
-	if err != nil {
-		return nil, err
-	}
-	response, err := kmsService.Projects.Locations.KeyRings.CryptoKeys.CryptoKeyVersions.GetPublicKey(config.KeyPath).Context(ctx).Do()
+	response, err := client.GetPublicKey(ctx, &kmspb.GetPublicKeyRequest{Name: config.KeyPath})
 	if err != nil {
 		return nil, err
 	}
@@ -213,31 +212,21 @@ func (s *SigningMethodKMS) Verify(signingString, signature string, key interface
 	return s.override.Verify(signingString, signature, key)
 }
 
-func signKMS(ctx context.Context, config *KMSConfig, request *cloudkms.AsymmetricSignRequest, ecdsaMethod *jwt.SigningMethodECDSA) (string, error) {
-	// Default config.OAuth2HTTPClient is a google.DefaultClient
-	client := config.OAuth2HTTPClient
+func signKMS(ctx context.Context, config *KMSConfig, request *kmspb.AsymmetricSignRequest, ecdsaMethod *jwt.SigningMethodECDSA) (string, error) {
+	client := config.KMSClient
 	if client == nil {
-		c, err := getDefaultOauthClient(ctx)
+		c, err := kms.NewKeyManagementClient(ctx)
 		if err != nil {
 			return "", err
 		}
 		client = c
 	}
 
-	// Prep the service
-	kmsService, err := cloudkms.New(client)
-	if err != nil {
-		return "", err
-	}
+	// Add key name to request
+	request.Name = config.KeyPath
 
 	// Do the call
-	signResp, err := kmsService.Projects.Locations.KeyRings.CryptoKeys.CryptoKeyVersions.AsymmetricSign(config.KeyPath, request).Context(ctx).Do()
-	if err != nil {
-		return "", err
-	}
-
-	// Decode the response
-	decodedSignature, err := base64.StdEncoding.DecodeString(signResp.Signature)
+	signResp, err := client.AsymmetricSign(ctx, request)
 	if err != nil {
 		return "", err
 	}
@@ -245,7 +234,7 @@ func signKMS(ctx context.Context, config *KMSConfig, request *cloudkms.Asymmetri
 	// If this was signed with the ECDSA algorithm, update the signature to keep it in spec
 	if ecdsaMethod != nil {
 		var parsedSig struct{ R, S *big.Int }
-		_, err = asn1.Unmarshal(decodedSignature, &parsedSig)
+		_, err = asn1.Unmarshal(signResp.Signature, &parsedSig)
 		if err != nil {
 			return "", fmt.Errorf("gcpjwt: failed to parse ecdsa signature bytes: %+v", err)
 		}
@@ -263,8 +252,8 @@ func signKMS(ctx context.Context, config *KMSConfig, request *cloudkms.Asymmetri
 		sBytesPadded := make([]byte, keyBytes)
 		copy(sBytesPadded[keyBytes-len(sBytes):], sBytes)
 
-		decodedSignature = append(rBytesPadded, sBytesPadded...)
+		signResp.Signature = append(rBytesPadded, sBytesPadded...)
 	}
 
-	return jwt.EncodeSegment(decodedSignature), nil
+	return jwt.EncodeSegment(signResp.Signature), nil
 }
