@@ -137,7 +137,7 @@ func TestHelpers(t *testing.T) {
 				"MissingToken",
 				audience,
 				nil,
-				http.StatusForbidden,
+				http.StatusUnauthorized,
 			},
 			{
 				"InvalidAudienceToken",
