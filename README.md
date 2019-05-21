@@ -6,6 +6,11 @@ Google Cloud Platform (Cloud KMS, IAM API, & AppEngine App Identity API) jwt-go 
 
 Google Cloud KMS [now supports signatures](https://cloud.google.com/kms/docs/create-validate-signatures) and support has been added to gcp-jwt-go!
 
+## Breaking Changes with v2.1
+
+- Dropping support for AppEngine Go 1.9 environment (last version with AppEngine App Identity support will be for Go 1.11)
+- KMSConfig no longer takes an optional HTTP Client, but rather the kms gRPC based client
+
 ## Breaking Changes with v2
 
 - Package name changed from gcp_jwt to gcpjwt
@@ -76,4 +81,4 @@ _Where cache=false is where we get the most value from these numbers as it shows
 - If using the IAM API - create a separate service account to sign on behalf of for your projects unless you NEED to use your default service account (e.g. the AppEngine service account). This way you can limit the scope of access for any leaked credentials. You'll have to grant the `roles/iam.serviceAccountTokenCreator` role to any user/group/serviceaccount you want to be able to sign on behalf of the new service account (resource: `projects/-/serviceAccounts/<serviceaccount>`). For example, create an api-signer service account, do NOT furnish any keys for it, [grant](https://cloud.google.com/iam/reference/rest/v1/projects.serviceAccounts/setIamPolicy) your AppEngine/GCE/etc. default service account the proper role for that serviceAccount, and use the api-signer@... service account address in your configuration.
 - If using outside of GCP, be sure to put credentials for an account that can access the service account for signing tokens in a well known location:
   1. A JSON file whose path is specified by the GOOGLE_APPLICATION_CREDENTIALS environment variable.
-  2. A JSON file in a location known to the gcloud command-line tool. On Windows, this is %APPDATA%/gcloud/application_default_credentials.json. On other systems, $HOME/.config/gcloud/application_default_credentials.json.
+  2. A JSON file in a location known to the gcloud command-line tool. On Windows, this is %APPDATA%/gcloud/application_default_credentials.json. On other systems, \$HOME/.config/gcloud/application_default_credentials.json.

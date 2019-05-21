@@ -108,6 +108,10 @@ func KMSFromContext(ctx context.Context) (*KMSConfig, bool) {
 	return val, ok
 }
 
+func getDefaultClient(ctx context.Context) *http.Client {
+	return http.DefaultClient
+}
+
 func getDefaultOauthClient(ctx context.Context) (*http.Client, error) {
 	return google.DefaultClient(ctx, iam.CloudPlatformScope)
 }

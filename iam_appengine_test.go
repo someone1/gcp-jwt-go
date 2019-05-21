@@ -1,5 +1,3 @@
-// +build appengine
-
 package gcpjwt
 
 import (
@@ -153,6 +151,9 @@ var appEngineTestData = []struct {
 // }
 
 func TestAppEngineSignAndVerify(t *testing.T) {
+	if !isAppEngine {
+		return
+	}
 	ctx, err := newContextFunc()
 	if err != nil {
 		t.Errorf("could not get context: %v", err)
@@ -192,6 +193,9 @@ func TestAppEngineSignAndVerify(t *testing.T) {
 }
 
 func TestSigningMethodAppEngineImpl_Sign(t *testing.T) {
+	if !isAppEngine {
+		return
+	}
 	type args struct {
 		signingString string
 		key           interface{}
