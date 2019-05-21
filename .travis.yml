@@ -27,8 +27,7 @@ install:
 
 script:
   - make test-coverage
-  - go mod vendor
-  - GOFLAGS=-mod=vendor make test-appengine-coverage
-  - cat ae_coverage.out ae2_coverage.out | grep .go >> coverage.out
+  - make test-appengine-coverage
+  - cat ae_coverage.out | grep .go >> coverage.out
   - "$GOPATH/bin/goveralls -coverprofile=coverage.out -service=travis-ci"
   - make fmt vet build

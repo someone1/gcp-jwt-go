@@ -25,8 +25,7 @@ test-coverage:
 	go test -coverprofile=coverage.out -covermode=count -coverpkg=$(shell go list ./... | grep -v '/vendor/' | paste -sd, -) ./...
 
 test-appengine-coverage:
-	APPENGINE_TEST=true goapp test -coverprofile=ae_coverage.out -covermode=count ./
-	APPENGINE_TEST=true goapp test -coverprofile=ae2_coverage.out -covermode=count -coverpkg=$(shell go list ./... | grep -v '/vendor/' | paste -sd, -) ./jwtmiddleware
+	APPENGINE_TEST=true go test -coverprofile=ae_coverage.out -covermode=count -coverpkg=$(shell go list ./... | grep -v '/vendor/' | paste -sd, -) ./...
 
 vet:
 	@if [ "`go vet ./... | tee /dev/stderr`" ]; then \
