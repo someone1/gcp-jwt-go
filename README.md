@@ -10,6 +10,7 @@ Google Cloud KMS [now supports signatures](https://cloud.google.com/kms/docs/cre
 
 - Dropping support for AppEngine Go 1.9 environment (last version with AppEngine App Identity support will be for Go 1.11)
 - KMSConfig no longer takes an optional HTTP Client, but rather the kms gRPC based client
+- Middleware will now return a 401 response for unauthenticated requests (previously was returning a 403 response)
 
 ## Breaking Changes with v2
 

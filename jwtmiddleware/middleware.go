@@ -29,7 +29,7 @@ func NewHandler(ctx context.Context, config *gcpjwt.IAMConfig, audience string) 
 
 			token, err := request.ParseFromRequest(r, request.AuthorizationHeaderExtractor, keyFunc, request.WithClaims(claims))
 			if err != nil || !token.Valid {
-				http.Error(w, http.StatusText(http.StatusForbidden), http.StatusForbidden)
+				http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
 				return
 			}
 
