@@ -4,13 +4,13 @@ import (
 	"context"
 	"testing"
 
-	"google.golang.org/api/iam/v1"
+	"google.golang.org/api/iamcredentials/v1"
 )
 
 func Test_signJwt(t *testing.T) {
 	type args struct {
 		ctx           context.Context
-		iamService    *iam.Service
+		iamService    *iamcredentials.Service
 		config        *IAMConfig
 		signingString string
 	}

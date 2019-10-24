@@ -6,7 +6,7 @@ import (
 	"fmt"
 
 	"github.com/dgrijalva/jwt-go"
-	"google.golang.org/api/iam/v1"
+	"google.golang.org/api/iamcredentials/v1"
 )
 
 // SigningMethodIAM is the base implementation for the signBlob and signJwt IAM API JWT signing methods. Not to be used on
@@ -14,7 +14,7 @@ import (
 type SigningMethodIAM struct {
 	alg      string
 	override string
-	sign     func(ctx context.Context, iamService *iam.Service, config *IAMConfig, signingString string) (string, error)
+	sign     func(ctx context.Context, iamService *iamcredentials.Service, config *IAMConfig, signingString string) (string, error)
 }
 
 // Alg will return the JWT header algorithm identifier this method is configured for.
@@ -66,7 +66,7 @@ func (s *SigningMethodIAM) Sign(signingString string, key interface{}) (string, 
 	}
 
 	// Do the call
-	iamService, err := iam.New(client)
+	iamService, err := iamcredentials.New(client)
 	if err != nil {
 		return "", err
 	}

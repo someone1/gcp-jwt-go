@@ -6,7 +6,7 @@ import (
 	"fmt"
 
 	"github.com/dgrijalva/jwt-go"
-	"google.golang.org/api/iam/v1"
+	"google.golang.org/api/iamcredentials/v1"
 )
 
 var (
@@ -26,10 +26,10 @@ func init() {
 	})
 }
 
-func signBlob(ctx context.Context, iamService *iam.Service, config *IAMConfig, signingString string) (string, error) {
+func signBlob(ctx context.Context, iamService *iamcredentials.Service, config *IAMConfig, signingString string) (string, error) {
 	// Prepare the call
-	signReq := &iam.SignBlobRequest{
-		BytesToSign: base64.StdEncoding.EncodeToString([]byte(signingString)),
+	signReq := &iamcredentials.SignBlobRequest{
+		Payload: base64.StdEncoding.EncodeToString([]byte(signingString)),
 	}
 	name := fmt.Sprintf("projects/%s/serviceAccounts/%s", config.ProjectID, config.ServiceAccount)
 
@@ -41,7 +41,7 @@ func signBlob(ctx context.Context, iamService *iam.Service, config *IAMConfig, s
 
 	config.lastKeyID = signResp.KeyId
 
-	signature, err := base64.StdEncoding.DecodeString(signResp.Signature)
+	signature, err := base64.StdEncoding.DecodeString(signResp.SignedBlob)
 	if err != nil {
 		return "", err
 	}

@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	"github.com/dgrijalva/jwt-go"
-	"google.golang.org/api/iam/v1"
+	"google.golang.org/api/iamcredentials/v1"
 )
 
 var (
@@ -26,7 +26,7 @@ func init() {
 	})
 }
 
-func signJwt(ctx context.Context, iamService *iam.Service, config *IAMConfig, signingString string) (string, error) {
+func signJwt(ctx context.Context, iamService *iamcredentials.Service, config *IAMConfig, signingString string) (string, error) {
 	// Prepare the call
 	// First decode the JSON string and discard the header
 	parts := strings.Split(signingString, ".")
@@ -38,7 +38,7 @@ func signJwt(ctx context.Context, iamService *iam.Service, config *IAMConfig, si
 		return "", err
 	}
 
-	signReq := &iam.SignJwtRequest{Payload: string(jwtClaimSet)}
+	signReq := &iamcredentials.SignJwtRequest{Payload: string(jwtClaimSet)}
 	name := fmt.Sprintf("projects/%s/serviceAccounts/%s", config.ProjectID, config.ServiceAccount)
 
 	// Do the call
