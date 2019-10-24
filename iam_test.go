@@ -2,6 +2,7 @@ package gcpjwt
 
 import (
 	"context"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"strings"
@@ -113,8 +114,9 @@ func TestIAMInvalidVerify(t *testing.T) {
 }
 
 func TestIAMSignAndVerify(t *testing.T) {
+	parts := strings.Split(jwtConfig.Email, "@")
 	config := &IAMConfig{
-		ServiceAccount: jwtConfig.Email,
+		ServiceAccount: fmt.Sprintf("api-signer@%s", parts[1]),
 	}
 	ctx, err := newContextFunc()
 	if err != nil {
