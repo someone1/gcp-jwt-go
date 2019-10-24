@@ -7,7 +7,6 @@ import (
 
 	"github.com/dgrijalva/jwt-go"
 	"google.golang.org/api/iamcredentials/v1"
-	"google.golang.org/api/option"
 )
 
 // SigningMethodIAM is the base implementation for the signBlob and signJwt IAM API JWT signing methods. Not to be used on
@@ -51,14 +50,14 @@ func (s *SigningMethodIAM) Sign(signingString string, key interface{}) (string, 
 		return "", ErrMissingConfig
 	}
 
-	// Default config.OAuth2HTTPClient is a google.DefaultClient
-	client := config.OAuth2HTTPClient
-	if client == nil {
-		c, err := getDefaultOauthClient(ctx)
+	// Use the user provided IAMService or generate our own
+	iamService := config.IAMService
+	if iamService == nil {
+		var err error
+		iamService, err = iamcredentials.NewService(ctx)
 		if err != nil {
 			return "", err
 		}
-		client = c
 	}
 
 	// Default the ProjectID to a wildcard
@@ -67,11 +66,6 @@ func (s *SigningMethodIAM) Sign(signingString string, key interface{}) (string, 
 	}
 
 	// Do the call
-	iamService, err := iamcredentials.NewService(ctx, option.WithHTTPClient(client))
-	if err != nil {
-		return "", err
-	}
-
 	return s.sign(ctx, iamService, config, signingString)
 }
 
