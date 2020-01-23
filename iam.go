@@ -7,6 +7,7 @@ import (
 
 	"github.com/dgrijalva/jwt-go"
 	"google.golang.org/api/iamcredentials/v1"
+	"google.golang.org/api/option"
 )
 
 // SigningMethodIAM is the base implementation for the signBlob and signJwt IAM API JWT signing methods. Not to be used on
@@ -66,7 +67,7 @@ func (s *SigningMethodIAM) Sign(signingString string, key interface{}) (string, 
 	}
 
 	// Do the call
-	iamService, err := iamcredentials.New(client)
+	iamService, err := iamcredentials.NewService(ctx, option.WithHTTPClient(client))
 	if err != nil {
 		return "", err
 	}

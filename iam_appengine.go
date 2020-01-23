@@ -2,6 +2,7 @@ package gcpjwt
 
 import (
 	"context"
+	"sync"
 	"time"
 
 	"github.com/dgrijalva/jwt-go"
@@ -16,6 +17,7 @@ const appEngineSvcAcct = "APPENGINE"
 // https://cloud.google.com/appengine/docs/go/appidentity/#Go_Asserting_identity_to_other_systems
 type SigningMethodAppEngineImpl struct {
 	*SigningMethodIAM
+	sync.RWMutex
 
 	lastKeyID string
 }
@@ -54,6 +56,9 @@ func (s *SigningMethodAppEngineImpl) Sign(signingString string, key interface{})
 		return "", err
 	}
 
+	s.Lock()
+	defer s.Unlock()
+
 	s.lastKeyID = keyName
 
 	return jwt.EncodeSegment(signature), nil
@@ -62,6 +67,9 @@ func (s *SigningMethodAppEngineImpl) Sign(signingString string, key interface{})
 // KeyID will return the last used KeyID to sign the JWT.
 // Helper function for adding the kid header to your token.
 func (s *SigningMethodAppEngineImpl) KeyID() string {
+	s.RLock()
+	defer s.RUnlock()
+
 	return s.lastKeyID
 }
 
