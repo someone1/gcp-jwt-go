@@ -39,6 +39,9 @@ func signBlob(ctx context.Context, iamService *iamcredentials.Service, config *I
 		return "", err
 	}
 
+	config.Lock()
+	defer config.Unlock()
+
 	config.lastKeyID = signResp.KeyId
 
 	signature, err := base64.StdEncoding.DecodeString(signResp.SignedBlob)

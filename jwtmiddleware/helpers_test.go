@@ -124,7 +124,7 @@ func TestHelpers(t *testing.T) {
 			return
 		}
 		okHandler := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-			w.Write([]byte("ok"))
+			_, _ = w.Write([]byte("ok"))
 		})
 		handler := NewHandler(ctx, config, "")(okHandler)
 		var tests = []struct {

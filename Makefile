@@ -8,9 +8,7 @@ fmt:
 	done
 
 lint:
-	@if [ "`gometalinter --cyclo-over=15 --deadline=5m ./... | tee /dev/stderr`" ]; then \
-		echo "^ gometalinter errors!" && echo && exit 1; \
-	fi
+	golangci-lint run
 
 get:
 	go get -v -d -t ./...
@@ -22,7 +20,7 @@ test-race:
 	go test -race ./...
 
 test-coverage:
-	go test -coverprofile=coverage.out -covermode=count -coverpkg=$(shell go list ./... | grep -v '/vendor/' | paste -sd, -) ./...
+	go test -race -v -coverprofile=coverage.out -covermode=atomic -coverpkg=$(shell go list ./... | grep -v '/vendor/' | paste -sd, -) ./...
 
 test-appengine-coverage:
 	APPENGINE_TEST=true go test -coverprofile=ae_coverage.out -covermode=count -coverpkg=$(shell go list ./... | grep -v '/vendor/' | paste -sd, -) ./...

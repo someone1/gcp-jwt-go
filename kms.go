@@ -126,7 +126,10 @@ func (s *SigningMethodKMS) Sign(signingString string, key interface{}) (string, 
 	}
 
 	digest := s.hasher.New()
-	digest.Write([]byte(signingString))
+	_, err := digest.Write([]byte(signingString))
+	if err != nil {
+		return "", err
+	}
 
 	asymmetricSignRequest := &kmspb.AsymmetricSignRequest{}
 	switch s.hasher {

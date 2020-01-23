@@ -5,6 +5,7 @@ import (
 	"crypto/sha1"
 	"errors"
 	"fmt"
+	"sync"
 	"net/http"
 	"time"
 
@@ -62,12 +63,17 @@ type IAMConfig struct {
 	Client *http.Client
 
 	lastKeyID string
+
+	sync.RWMutex
 }
 
 // KeyID will return the last used KeyID to sign the JWT - though it should be noted the signJwt method will always
 // add its own token header which is not parsed back to the token.
 // Helper function for adding the kid header to your token.
 func (i *IAMConfig) KeyID() string {
+	i.RLock()
+	defer i.RUnlock()
+
 	return i.lastKeyID
 }
 
