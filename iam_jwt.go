@@ -11,7 +11,7 @@ import (
 
 var (
 	// SigningMethodIAMJWT implements signing JWTs with the IAM signJwt API.
-	// https://cloud.google.com/iam/reference/rest/v1/projects.serviceAccounts/signJwt
+	// https://cloud.google.com/iam/docs/reference/credentials/rest/v1/projects.serviceAccounts/signJwt
 	SigningMethodIAMJWT *SigningMethodIAM
 )
 
@@ -39,7 +39,7 @@ func signJwt(ctx context.Context, iamService *iamcredentials.Service, config *IA
 	}
 
 	signReq := &iamcredentials.SignJwtRequest{Payload: string(jwtClaimSet)}
-	name := fmt.Sprintf("projects/%s/serviceAccounts/%s", config.ProjectID, config.ServiceAccount)
+	name := fmt.Sprintf("projects/-/serviceAccounts/%s", config.ServiceAccount)
 
 	// Do the call
 	signResp, err := iamService.Projects.ServiceAccounts.SignJwt(name, signReq).Context(ctx).Do()

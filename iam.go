@@ -60,11 +60,6 @@ func (s *SigningMethodIAM) Sign(signingString string, key interface{}) (string, 
 		}
 	}
 
-	// Default the ProjectID to a wildcard
-	if config.ProjectID == "" {
-		config.ProjectID = "-"
-	}
-
 	// Do the call
 	return s.sign(ctx, iamService, config, signingString)
 }
