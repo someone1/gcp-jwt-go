@@ -47,6 +47,9 @@ func signJwt(ctx context.Context, iamService *iamcredentials.Service, config *IA
 		return "", err
 	}
 
+	config.Lock()
+	defer config.Unlock()
+
 	config.lastKeyID = signResp.KeyId
 
 	return signResp.SignedJwt, nil

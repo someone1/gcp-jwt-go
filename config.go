@@ -6,11 +6,11 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"sync"
 	"time"
 
 	kms "cloud.google.com/go/kms/apiv1"
-	"golang.org/x/oauth2/google"
-	"google.golang.org/api/iam/v1"
+	iamcredentials "google.golang.org/api/iamcredentials/v1"
 )
 
 type iamType int
@@ -53,8 +53,13 @@ type IAMConfig struct {
 	// Used for the jwtmiddleware and oauth2 packages.
 	IAMType iamType
 
+	// IAMService is a user provided service client that should be used when communicating with the iamcredentials API,
+	// otherwuse the default service will be used.
+	IAMService *iamcredentials.Service
+
 	// OAuth2HTTPClient is a user provided oauth2 authenticated *http.Client to use, google.DefaultClient used otherwise
 	// Used for signing requests
+	// Depcrecated: This field is no longer used. Use IAMClient instead
 	OAuth2HTTPClient *http.Client
 
 	// Client is a user provided *http.Client to use, http.DefaultClient is used otherwise (AppEngine URL Fetch Supported)
@@ -62,12 +67,17 @@ type IAMConfig struct {
 	Client *http.Client
 
 	lastKeyID string
+
+	sync.RWMutex
 }
 
 // KeyID will return the last used KeyID to sign the JWT - though it should be noted the signJwt method will always
 // add its own token header which is not parsed back to the token.
 // Helper function for adding the kid header to your token.
 func (i *IAMConfig) KeyID() string {
+	i.RLock()
+	defer i.RUnlock()
+
 	return i.lastKeyID
 }
 
@@ -110,8 +120,4 @@ func KMSFromContext(ctx context.Context) (*KMSConfig, bool) {
 
 func getDefaultClient(ctx context.Context) *http.Client {
 	return http.DefaultClient
-}
-
-func getDefaultOauthClient(ctx context.Context) (*http.Client, error) {
-	return google.DefaultClient(ctx, iam.CloudPlatformScope)
 }
