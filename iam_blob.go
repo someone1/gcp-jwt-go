@@ -11,7 +11,7 @@ import (
 
 var (
 	// SigningMethodIAMBlob implements signing JWTs with the IAM signBlob API.
-	// https://cloud.google.com/iam/reference/rest/v1/projects.serviceAccounts/signBlob
+	// https://cloud.google.com/iam/docs/reference/credentials/rest/v1/projects.serviceAccounts/signBlob
 	SigningMethodIAMBlob *SigningMethodIAM
 )
 
@@ -31,7 +31,7 @@ func signBlob(ctx context.Context, iamService *iamcredentials.Service, config *I
 	signReq := &iamcredentials.SignBlobRequest{
 		Payload: base64.StdEncoding.EncodeToString([]byte(signingString)),
 	}
-	name := fmt.Sprintf("projects/%s/serviceAccounts/%s", config.ProjectID, config.ServiceAccount)
+	name := fmt.Sprintf("projects/-/serviceAccounts/%s", config.ServiceAccount)
 
 	// Do the call
 	signResp, err := iamService.Projects.ServiceAccounts.SignBlob(name, signReq).Context(ctx).Do()

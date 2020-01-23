@@ -6,6 +6,12 @@ Google Cloud Platform (Cloud KMS, IAM API, & AppEngine App Identity API) jwt-go 
 
 Google Cloud KMS [now supports signatures](https://cloud.google.com/kms/docs/create-validate-signatures) and support has been added to gcp-jwt-go!
 
+## Breaking Changes with v2.2
+
+- Switched to new iamcredentials API - this no longer allows signBlob to be used on the service account the client is authenticated as.
+- `IAMConfig.OAuth2HTTPClient` is deprecrated and unused - Use `IAMConfig.IAMClient` instead.
+- `IAMConfig.ProjectID` is deprecrated and unused. The API will infer the project from the service account name.
+
 ## Breaking Changes with v2.1
 
 - Dropping support for AppEngine Go 1.9 environment (last version with AppEngine App Identity support will be for Go 1.11)

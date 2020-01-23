@@ -35,6 +35,7 @@ type kmsConfigKey struct{}
 // IAMConfig is relevant for both the signBlob and signJWT IAM API use-cases
 type IAMConfig struct {
 	// ProjectID is the project id that contains the service account you want to sign with. Defaults to "-" to infer the project from the account
+	// Depcrecated: This field is no longer used as the API will reject all values other than "-".
 	ProjectID string
 
 	// Service account can be the email address or the uniqueId of the service account used to sign the JWT with
