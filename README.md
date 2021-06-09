@@ -32,7 +32,7 @@ To continue using the older version, please import as follows: `import "gopkg.in
 
 ### Features
 
-gcp-jwt-go has basic implementations of using [Google Cloud KMS](https://cloud.google.com/kms/docs/create-validate-signatures), Google IAM API (both [signJwt](https://cloud.google.com/iam/reference/rest/v1/projects.serviceAccounts/signJwt) and [signBlob](https://cloud.google.com/iam/reference/rest/v1/projects.serviceAccounts/signBlob)), and the [App Identity API](https://cloud.google.com/appengine/docs/go/appidentity/) from AppEngine Standard on Google Cloud Platform to sign JWT tokens using the [dgrijalva/jwt-go](https://github.com/dgrijalva/jwt-go) package. Should work across virtually all environments, on or off of Google's Cloud Platform.
+gcp-jwt-go has basic implementations of using [Google Cloud KMS](https://cloud.google.com/kms/docs/create-validate-signatures), Google IAM API (both [signJwt](https://cloud.google.com/iam/reference/rest/v1/projects.serviceAccounts/signJwt) and [signBlob](https://cloud.google.com/iam/reference/rest/v1/projects.serviceAccounts/signBlob)), and the [App Identity API](https://cloud.google.com/appengine/docs/go/appidentity/) from AppEngine Standard on Google Cloud Platform to sign JWT tokens using the [golang-jwt/jwt](https://github.com/golang-jwt/jwt) package. Should work across virtually all environments, on or off of Google's Cloud Platform.
 
 ## Getting Started
 

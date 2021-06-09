@@ -10,7 +10,7 @@ import (
 	"math/big"
 
 	kms "cloud.google.com/go/kms/apiv1"
-	"github.com/dgrijalva/jwt-go"
+	"github.com/golang-jwt/jwt"
 	kmspb "google.golang.org/genproto/googleapis/cloud/kms/v1"
 )
 

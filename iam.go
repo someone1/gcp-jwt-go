@@ -5,7 +5,7 @@ import (
 	"crypto/rsa"
 	"fmt"
 
-	"github.com/dgrijalva/jwt-go"
+	"github.com/golang-jwt/jwt"
 	"google.golang.org/api/iamcredentials/v1"
 )
 
