@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/golang-jwt/jwt"
+	"github.com/golang-jwt/jwt/v4"
 	"golang.org/x/oauth2"
 
 	gcpjwt "github.com/someone1/gcp-jwt-go/v2"

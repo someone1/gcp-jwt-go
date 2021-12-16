@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/golang-jwt/jwt"
-	"github.com/golang-jwt/jwt/request"
+	"github.com/golang-jwt/jwt/v4"
+	"github.com/golang-jwt/jwt/v4/request"
 
 	gcpjwt "github.com/someone1/gcp-jwt-go/v2"
 )

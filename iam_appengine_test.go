@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/golang-jwt/jwt"
+	"github.com/golang-jwt/jwt/v4"
 )
 
 // Public/Private key is hardcoded in dev server and found in
