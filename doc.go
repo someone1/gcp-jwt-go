@@ -2,7 +2,7 @@
 Package gcpjwt has Google Cloud Platform (Cloud KMS, IAM API, & AppEngine App Identity API) jwt-go implementations.
 Should work across virtually all environments, on or off of Google's Cloud Platform.
 
-Getting Started
+# Getting Started
 
 It is highly recommended that you override the default algorithm implementations that you want to leverage a GCP service
 for in dgrijalva/jwt-go. You otherwise will have to manually pick the verification method for your JWTs and they will
@@ -38,22 +38,21 @@ Example:
 
 As long as a you override a default algorithm implementation as shown above, using the dgrijalva/jwt-go is mostly unchanged.
 
-Create a Token
+# Create a Token
 
 Token creation is more/less done the same way as in the dgrijalva/jwt-go package. The key that you need to provide is
 always going to be a context.Context, usuaully with a configuration object loaded in:
-	- use gcpjwt.IAMConfig for the SigningMethodIAMJWT and SigningMethodIAMBlob signing methods
-	- use an appengine.NewContext for the SigningMethodAppEngine signing method
-	- use gcpjwt.KMSConfig for any of the KMS signing methods
+  - use gcpjwt.IAMConfig for the SigningMethodIAMJWT and SigningMethodIAMBlob signing methods
+  - use an appengine.NewContext for the SigningMethodAppEngine signing method
+  - use gcpjwt.KMSConfig for any of the KMS signing methods
 
 Example:
-
 
 	import (
 		"context"
 		"net/http"
 
-		"github.com/dgrijalva/jwt-go"
+		"github.com/golang-jwt/jwt/v4"
 		"github.com/someone1/gcp-jwt-go"
 		"google.golang.org/appengine" // only on AppEngine Standard when using the SigningMethodAppEngine signing method
 	)
@@ -102,14 +101,14 @@ Example:
 		return token.Method.Sign(signingString, key)
 	}
 
-Validate a Token
+# Validate a Token
 
 Finally, the steps to validate a token should be straight forward. This library provides you with helper jwt.Keyfunc
 implementations to do the heavy lifting around getting the public certificates for verification:
 
-	- gcpjwt.IAMVerfiyKeyfunc can be used for the IAM API and the AppEngine Standard signing methods
-	- gcpjwt.AppEngineVerfiyKeyfunc is only available on AppEngine standard and can only be used on JWT signed from the same default service account as the running application
-	- gcp.KMSVerfiyKeyfunc can be used for the Cloud KMS signing methods
+  - gcpjwt.IAMVerfiyKeyfunc can be used for the IAM API and the AppEngine Standard signing methods
+  - gcpjwt.AppEngineVerfiyKeyfunc is only available on AppEngine standard and can only be used on JWT signed from the same default service account as the running application
+  - gcp.KMSVerfiyKeyfunc can be used for the Cloud KMS signing methods
 
 Example:
 
@@ -118,7 +117,7 @@ Example:
 		"time"
 		"strings"
 
-		"github.com/dgrijalva/jwt-go"
+		"github.com/golang-jwt/jwt/v4"
 		"github.com/someone1/gcp-jwt-go"
 	)
 
@@ -156,7 +155,7 @@ Example:
 		// The following is an extreme and advanced use-case - it is NOT recommended but here for those who need it.
 		//
 		// If we need to manually override the detected jwt.SigningMethod based on the 'alg' header
-		// This is basically copying the https://github.com/dgrijalva/jwt-go/blob/master/parser.go#L23 ParseWithClaims function here but forcing our own method vs getting one based on the Alg field
+		// This is basically copying the https://github.com/golang-jwt/jwt/v4/blob/master/parser.go#L23 ParseWithClaims function here but forcing our own method vs getting one based on the Alg field
 		// Or Try and parse, Ignore the result and try with the proper method:
 		token, _ := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
 			return nil, nil

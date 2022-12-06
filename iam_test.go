@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/dgrijalva/jwt-go"
+	"github.com/golang-jwt/jwt/v4"
 	"golang.org/x/oauth2/google"
 	gjwt "golang.org/x/oauth2/jwt"
 	"google.golang.org/appengine"
