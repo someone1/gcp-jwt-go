@@ -1,4 +1,4 @@
-# gcp-jwt-go [![GoDoc](https://godoc.org/github.com/someone1/gcp-jwt-go?status.svg)](https://godoc.org/github.com/someone1/gcp-jwt-go) [![Go Report Card](https://goreportcard.com/badge/github.com/someone1/gcp-jwt-go)](https://goreportcard.com/report/github.com/someone1/gcp-jwt-go) [![Build Status](https://travis-ci.org/someone1/gcp-jwt-go.svg)](https://travis-ci.org/someone1/gcp-jwt-go) [![Coverage Status](https://coveralls.io/repos/github/someone1/gcp-jwt-go/badge.svg)](https://coveralls.io/github/someone1/gcp-jwt-go)
+# gcp-jwt-go [![Go Reference](https://pkg.go.dev/badge/github.com/someone1/gcp-jwt-go/v2.svg)](https://pkg.go.dev/github.com/someone1/gcp-jwt-go/v2) [![Go Report Card](https://goreportcard.com/badge/github.com/someone1/gcp-jwt-go)](https://goreportcard.com/report/github.com/someone1/gcp-jwt-go) [![Build Status](https://travis-ci.org/someone1/gcp-jwt-go.svg)](https://travis-ci.org/someone1/gcp-jwt-go) [![Coverage Status](https://coveralls.io/repos/github/someone1/gcp-jwt-go/badge.svg)](https://coveralls.io/github/someone1/gcp-jwt-go)
 
 Google Cloud Platform (Cloud KMS, IAM API, & AppEngine App Identity API) jwt-go implementations
 
@@ -36,7 +36,7 @@ gcp-jwt-go has basic implementations of using [Google Cloud KMS](https://cloud.g
 
 ## Getting Started
 
-Please read the documentation at [https://godoc.org/github.com/someone1/gcp-jwt-go](https://godoc.org/github.com/someone1/gcp-jwt-go)
+Please read the documentation at [https://pkg.go.dev/github.com/someone1/gcp-jwt-go/v2](https://pkg.go.dev/github.com/someone1/gcp-jwt-go/v2)
 
 ## Performance
 
