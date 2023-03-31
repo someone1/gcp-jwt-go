@@ -53,7 +53,7 @@ Example:
 		"context"
 		"net/http"
 
-		"github.com/dgrijalva/jwt-go"
+		"github.com/golang-jwt/jwt/v4"
 		"github.com/someone1/gcp-jwt-go"
 		"google.golang.org/appengine" // only on AppEngine Standard when using the SigningMethodAppEngine signing method
 	)
@@ -118,7 +118,7 @@ Example:
 		"time"
 		"strings"
 
-		"github.com/dgrijalva/jwt-go"
+		"github.com/golang-jwt/jwt/v4"
 		"github.com/someone1/gcp-jwt-go"
 	)
 
@@ -156,7 +156,7 @@ Example:
 		// The following is an extreme and advanced use-case - it is NOT recommended but here for those who need it.
 		//
 		// If we need to manually override the detected jwt.SigningMethod based on the 'alg' header
-		// This is basically copying the https://github.com/dgrijalva/jwt-go/blob/master/parser.go#L23 ParseWithClaims function here but forcing our own method vs getting one based on the Alg field
+		// This is basically copying the https://github.com/golang-jwt/jwt/v4/blob/main/parser.go#L23 ParseWithClaims function here but forcing our own method vs getting one based on the Alg field
 		// Or Try and parse, Ignore the result and try with the proper method:
 		token, _ := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
 			return nil, nil
