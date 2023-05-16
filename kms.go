@@ -10,8 +10,8 @@ import (
 	"math/big"
 
 	kms "cloud.google.com/go/kms/apiv1"
+	"cloud.google.com/go/kms/apiv1/kmspb"
 	"github.com/dgrijalva/jwt-go"
-	kmspb "google.golang.org/genproto/googleapis/cloud/kms/v1"
 )
 
 // SigningMethodKMS implements the jwt.SiginingMethod interface for Google's Cloud KMS service
